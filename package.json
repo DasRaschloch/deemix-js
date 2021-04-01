@@ -1,0 +1,15 @@
+{
+  "name": "deemix",
+  "version": "0.0.0",
+  "description": "a barebones deezer downloader library",
+  "main": "deemix/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "RemixDev",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "deezer-js": "^0.0.2",
+    "got": "^11.8.2"
+  }
+}
