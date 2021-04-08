@@ -15,7 +15,6 @@ class IDownloadObject{
     this.files = obj.files || []
     this.progressNext = 0
     this.uuid = `${this.type}_${this.id}_${this.bitrate}`
-    this.ack = null
     this.__type__ = null
   }
 
@@ -35,7 +34,6 @@ class IDownloadObject{
       progress: this.progress,
       errors: this.errors,
       files: this.files,
-      ack: this.ack,
       __type__: this.__type__
     }
   }

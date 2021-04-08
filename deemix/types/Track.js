@@ -27,7 +27,7 @@ class Track {
     this.playlist = null
     this.position = null
     this.searched = false
-    this.selectedFormat = 0
+    this.bitrate = 0
     this.singleDownload = false
     this.dateString = ""
     this.artistsString = ""

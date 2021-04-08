@@ -11,13 +11,13 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
       trackAPI = await dz.api.get_track(id)
     } catch (e){
       console.error(e)
-      throw "WrongURL"
+      throw new GenerationError(e)
     }
 
     if (trackAPI.id && trackAPI.title){
       id = trackAPI.id
     } else {
-      throw "ISRCnotOnDeezer"
+      throw new ISRCnotOnDeezer()
     }
   }
 
@@ -26,7 +26,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
     trackAPI_gw = await dz.gw.get_track_with_fallback(id)
   } catch (e){
     console.error(e)
-    throw "WrongURL"
+    throw new GenerationError(e)
   }
 
   let title = trackAPI_gw.SNG_TITLE.trim()
@@ -58,7 +58,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     albumAPI = await dz.api.get_album(id)
   } catch (e){
     console.error(e)
-    throw "WrongURL"
+    throw new GenerationError(e)
   }
 
   if (id.startswith('upc')) { id = albumAPI['id'] }
@@ -126,12 +126,12 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
         playlistAPI = map_user_playlist(userPlaylist['DATA'])
       }catch (e){
         console.error(e)
-        throw "WrongURL"
+        throw new GenerationError(e)
       }
     }
     // Check if private playlist and owner
     if (!playlsitAPI.public && playlistAPI.creator.id != dz.current_user.id){
-      throw "notYourPrivatePlaylist"
+      throw new NotYourPrivatePlaylist()
     }
   }
 
@@ -175,7 +175,7 @@ async function generateArtistItem(dz, id, bitrate, listener){
     artistAPI = await dz.api.get_artist(id)
   }catch (e){
     console.error(e)
-    throw "https://deezer.com/artist/"+id, `Wrong URL: ${e}`
+    throw new GenerationError(e)
   }
 
   const rootArtist = {
@@ -192,8 +192,7 @@ async function generateArtistItem(dz, id, bitrate, listener){
       let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
       albumList.append(albumData)
     }catch (e){
-      console.error(e)
-      console.error(album.id, "No Data")
+      console.warn(album.id, "No Data", e)
     }
   })
 
@@ -208,7 +207,7 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
     artistAPI = await dz.api.get_artist(id)
   }catch (e){
     console.error(e)
-    throw "https://deezer.com/artist/"+id+"/discography", `Wrong URL: ${e}`
+    throw new GenerationError(e)
   }
 
   const rootArtist = {
@@ -226,8 +225,7 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
         let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
         albumList.append(albumData)
       }catch (e){
-        console.error(e)
-        console.error(album.id, "No Data")
+        console.warn(album.id, "No Data", e)
       }
     });
   });
@@ -244,34 +242,34 @@ async function generateArtistTopItem(dz, id, bitrate){
     artistAPI = dz.api.get_artist(id)
   }catch (e){
     console.error(e)
-    throw "https://deezer.com/artist/"+id+"/top_track", `Wrong URL: ${e}`
+    throw new GenerationError(e)
   }
 
   // Emulate the creation of a playlist
   // Can't use generatePlaylistItem directly as this is not a real playlist
   const playlistAPI = {
-    id: artistAPI['id']+"_top_track",
-    title: artistAPI['name']+" - Top Tracks",
-    description: "Top Tracks for "+artistAPI['name'],
+    id: artistAPI.id+"_top_track",
+    title: artistAPI.name+" - Top Tracks",
+    description: "Top Tracks for "+artistAPI.name,
     duration: 0,
-    public: True,
-    is_loved_track: False,
-    collaborative: False,
+    public: true,
+    is_loved_track: false,
+    collaborative: false,
     nb_tracks: 0,
-    fans: artistAPI['nb_fan'],
-    link: "https://www.deezer.com/artist/"+artistAPI['id']+"/top_track",
-    share: None,
-    picture: artistAPI['picture'],
-    picture_small: artistAPI['picture_small'],
-    picture_medium: artistAPI['picture_medium'],
-    picture_big: artistAPI['picture_big'],
-    picture_xl: artistAPI['picture_xl'],
-    checksum: None,
-    tracklist: "https://api.deezer.com/artist/"+artistAPI['id']+"/top",
+    fans: artistAPI.nb_fan,
+    link: "https://www.deezer.com/artist/"+artistAPI.id+"/top_track",
+    share: null,
+    picture: artistAPI.picture,
+    picture_small: artistAPI.picture_small,
+    picture_medium: artistAPI.picture_medium,
+    picture_big: artistAPI.picture_big,
+    picture_xl: artistAPI.picture_xl,
+    checksum: null,
+    tracklist: "https://api.deezer.com/artist/"+artistAPI.id+"/top",
     creation_date: "XXXX-00-00",
     creator: {
-      id: "art_"+artistAPI['id'],
-      name: artistAPI['name'],
+      id: "art_"+artistAPI.id,
+      name: artistAPI.name,
       type: "user"
     },
     type: "playlist"
@@ -281,11 +279,35 @@ async function generateArtistTopItem(dz, id, bitrate){
   return generatePlaylistItem(dz, playlistAPI.id, bitrate, playlistAPI, artistTopTracksAPI_gw)
 }
 
+class GenerationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "GenerationError";
+  }
+}
+
+class ISRCnotOnDeezer extends GenerationError {
+  constructor(message) {
+    super(message);
+    this.name = "ISRCnotOnDeezer";
+  }
+}
+
+class NotYourPrivatePlaylist extends GenerationError {
+  constructor(message) {
+    super(message);
+    this.name = "NotYourPrivatePlaylist";
+  }
+}
+
 module.exports = {
   generateTrackItem,
   generateAlbumItem,
   generatePlaylistItem,
   generateArtistItem,
   generateArtistDiscographyItem,
-  generateArtistTopItem
+  generateArtistTopItem,
+  GenerationError,
+  ISRCnotOnDeezer,
+  NotYourPrivatePlaylist
 }

@@ -72,7 +72,6 @@ module.exports = {
   parseLink,
   generateDownloadObject,
   types: {
-    ...require('./types/index.js'),
     ...require('./types/Album.js'),
     ...require('./types/Artist.js'),
     ...require('./types/Date.js'),
