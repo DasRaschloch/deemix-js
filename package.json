@@ -9,7 +9,7 @@
   "author": "RemixDev",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "deezer-js": "^0.0.2",
+    "deezer-js": "^0.0.3",
     "got": "^11.8.2"
   }
 }

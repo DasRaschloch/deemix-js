@@ -61,16 +61,16 @@ class IDownloadObject{
     return light
   }
 
-  updateProgress(interface){
+  updateProgress(listener){
     if (Math.round(this.progressNext) != this.progress && Math.round(this.progressNext) % 2 == 0){
       this.progress = Math.round(this.progressNext)
-      if (interface) interface.emit('updateQueue', {uuid: this.uuid, progress: this.progress})
+      if (listener) listener.emit('updateQueue', {uuid: this.uuid, progress: this.progress})
     }
   }
 
 }
 
-class Single(IDownloadObject){
+class Single extends IDownloadObject{
   constructor(obj){
     super(obj)
     this.size = 1
@@ -79,23 +79,23 @@ class Single(IDownloadObject){
   }
 
   toDict(){
-    item = super().toDict()
+    item = super.toDict()
     item.single = this.single
     return item
   }
 
-  completeTrackProgress(interface){
+  completeTrackProgress(listener){
     this.progressNext = 100
-    this.updateProgress(interface)
+    this.updateProgress(listener)
   }
 
-  removeTrackProgress(interface){
+  removeTrackProgress(listener){
     this.progressNext = 0
-    this.updateProgress(interface)
+    this.updateProgress(listener)
   }
 }
 
-class Collection(IDownloadObject){
+class Collection extends IDownloadObject{
   constructor(obj){
     super(obj)
     this.collection = obj.collection
@@ -103,23 +103,23 @@ class Collection(IDownloadObject){
   }
 
   toDict(){
-    item = super().toDict()
+    item = super.toDict()
     item.collection = this.collection
     return item
   }
 
-  completeTrackProgress(interface){
+  completeTrackProgress(listener){
     this.progressNext += (1 / this.size) * 100
-    this.updateProgress(interface)
+    this.updateProgress(listener)
   }
 
-  removeTrackProgress(interface){
+  removeTrackProgress(listener){
     this.progressNext -= (1 / this.size) * 100
-    this.updateProgress(interface)
+    this.updateProgress(listener)
   }
 }
 
-class Convertable(Collection){
+class Convertable extends Collection{
   constructor(obj){
     super(obj)
     this.plugin = obj.plugin
@@ -128,7 +128,7 @@ class Convertable(Collection){
   }
 
   toDict(){
-    item = super().toDict()
+    item = super.toDict()
     item.plugin = this.plugin
     item.conversion_data = this.conversion_data
   }

@@ -9,7 +9,10 @@ const {
 } = require('./itemgen.js')
 
 async function parseLink(link){
-  if (link.indexOf('deezer.page.link') != -1) link = await got.get(link).url // Resolve URL shortner
+  if (link.indexOf('deezer.page.link') != -1){
+    link = await got.get(link) // Resolve URL shortner
+    link = link.url
+  }
   // Remove extra stuff
   if (link.indexOf('?') != -1) link = link.substring(0, link.indexOf('?'))
   if (link.indexOf('&') != -1) link = link.substring(0, link.indexOf('&'))
@@ -21,29 +24,30 @@ async function parseLink(link){
 
   if (link.search(/\/track\/(.+)/g) != -1){
     type = 'track'
-    id = link.match(/\/track\/(.+)/g)[1]
+    id = /\/track\/(.+)/g.exec(link)[1]
   }else if (link.search(/\/playlist\/(\d+)/g) != -1){
     type = 'playlist'
-    id = link.match(/\/playlist\/(\d+)/g)[1]
+    id = /\/playlist\/(\d+)/g.exec(link)[1]
   }else if (link.search(/\/album\/(.+)/g) != -1){
     type = 'album'
-    id = link.match(/\/album\/(.+)/g)[1]
+    id = /\/album\/(.+)/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)\/top_track/g) != -1){
     type = 'artist_top'
-    id = link.match(/\/artist\/(\d+)\/top_track/g)[1]
+    id = /\/artist\/(\d+)\/top_track/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)\/discography/g) != -1){
     type = 'artist_discography'
-    id = link.match(/\/artist\/(\d+)\/discography/g)[1]
+    id = /\/artist\/(\d+)\/discography/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)/g) != -1){
     type = 'artist'
-    id = link.match(/\/artist\/(\d+)/g)[1]
+    id = /\/artist\/(\d+)/g.exec(link)[1]
   }
 
   return [link, type, id]
 }
 
 async function generateDownloadObject(dz, link, bitrate){
-  let [link, type, id] = await parseLink(link)
+  let type, id
+  [link, type, id] = await parseLink(link)
 
   if (type == null || id == null) return null
 
@@ -67,7 +71,6 @@ async function generateDownloadObject(dz, link, bitrate){
 module.exports = {
   parseLink,
   generateDownloadObject,
-  VARIOUS_ARTISTS,
   types: {
     ...require('./types/index.js'),
     ...require('./types/Album.js'),

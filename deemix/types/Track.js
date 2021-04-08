@@ -1,6 +1,6 @@
 const got = require('got')
 
-class Track(){
+class Track {
   constructor(){
     this.id = "0",
     this.title = "",
@@ -104,7 +104,7 @@ class Track(){
       this.parseTrackGW(trackAPI_gw)
 
       // Get Lyrics Data
-      if (!trackAPI_gw.LYRICS and this.lyrics.id != "0"){
+      if (!trackAPI_gw.LYRICS && this.lyrics.id != "0"){
         try { trackAPI_gw.LYRICS = await dz.gw.get_track_lyrics(this.id) }
         catch { this.lyrics.id = "0" }
       }

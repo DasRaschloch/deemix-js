@@ -8,10 +8,10 @@ class Picture {
   getURL(size, format) {
     if (this.staticUrl) return this.staticUrl
 
-    let url: string = `https://e-cdns-images.dzcdn.net/images/${this.type}/${this.md5}/${str(size)}x${str(size)}`
+    let url = `https://e-cdns-images.dzcdn.net/images/${this.type}/${this.md5}/${str(size)}x${str(size)}`
 
     if (format.startsWith('jpg')){
-      let quality: number = 80
+      let quality = 80
       if (format.indexOf('-') != -1) quality = int(format.substr(4))
       format = 'jpg'
       return url+`-000000-${str(quality)}-0-0.jpg`
