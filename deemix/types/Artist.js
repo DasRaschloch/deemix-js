@@ -3,11 +3,11 @@ const { VARIOUS_ARTISTS } = require('../index.js')
 
 class Artist {
   constructor(id="0", name="", role = "", pic_md5 = ""){
-    this.id = str(id)
+    this.id = String(id)
     this.name = name
-    this.pic = Picture(md5 = pic_md5, type="artist")
+    this.pic = new Picture(pic_md5, "artist")
     this.role = role
-    this.save = True
+    this.save = true
   }
 
   ifVariousArtist(){

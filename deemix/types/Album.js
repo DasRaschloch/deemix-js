@@ -10,10 +10,10 @@ class Album {
   constructor(id = 0, title = "", pic_md5 = ""){
     this.id = id
     this.title = title
-    this.pic = Picture(md5=pic_md5, type="cover")
+    this.pic = new Picture(pic_md5, "cover")
     this.artist = {"Main": []}
     this.artists = []
-    self.mainArtist = null
+    this.mainArtist = null
     this.date = Date()
     this.dateString = ""
     this.trackTotal = "0"
@@ -26,8 +26,8 @@ class Album {
     this.label = "Unknown"
     this.recordType = "album"
     this.bitrate = 0
-    self.rootArtist = null
-    self.variousArtists = null
+    this.rootArtist = null
+    this.variousArtists = null
   }
 
   parseAlbum(albumAPI){
@@ -37,27 +37,29 @@ class Album {
     // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
     let art_pic = albumAPI.artist.picture_small
     art_pic = art_pic.substring( art_pic.indexOf('artist/')+7, art_pic.length-24 )
-    this.mainArtist = Artist(
+    this.mainArtist = new Artist(
       albumAPI.artist.id,
       albumAPI.artist.name,
-      pic_md5 = art_pic
+      "Main",
+      art_pic
     )
     if (albumAPI.root_artist){
       let art_pic = albumAPI.root_artist.picture_small
       art_pic = art_pic.substring( art_pic.indexOf('artist/')+7, art_pic.length-24 )
-      this.rootArtist = Artist(
+      this.rootArtist = new Artist(
         albumAPI.root_artist.id,
         albumAPI.root_artist.name,
-        pic_md5 = art_pic
+        "Root",
+        art_pic
       )
     }
 
     albumAPI.contributors.forEach(artist => {
-      let isVariousArtists = str(artist.id) == VARIOUS_ARTISTS
+      let isVariousArtists = String(artist.id) == VARIOUS_ARTISTS
       let isMainArtist = artist.role == "Main"
 
       if (isVariousArtists){
-        this.variousArtists = Artist(
+        this.variousArtists = new Artist(
           artist.id,
           artist.name,
           artist.role
@@ -80,7 +82,7 @@ class Album {
 
     this.barcode = albumAPI.upc || this.barcode
     this.label = albumAPI.label || this.label
-    this.explicit = bool(albumAPI.explicit_lyrics || false)
+    this.explicit = Boolean(albumAPI.explicit_lyrics || false)
     if (albumAPI.release_date){
       this.date.year = albumAPI.release_date.substring(0,4)
       this.date.month = albumAPI.release_date.substring(5,7)
@@ -107,7 +109,7 @@ class Album {
 
   parseAlbumGW(albumAPI_gw){
     this.title = albumAPI_gw.ALB_TITLE
-    this.mainArtist = Aritst(
+    this.mainArtist = new Artist(
       albumAPI_gw.ART_ID,
       albumAPI_gw.ART_NAME
     )
@@ -118,6 +120,7 @@ class Album {
     this.label = albumAPI_gw.LABEL_NAME || this.label
 
     let explicitLyricsStatus = albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS
+    this.explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].contains(explicitLyricsStatus)
 
     if (this.pic.md5 == ""){
       this.pic.md5 = albumAPI_gw.ALB_PICTURE
@@ -150,11 +153,11 @@ class Album {
   }
 
   removeDuplicateArtists(){
-    [self.artist, self.artists] = removeDuplicateArtists(self.artist, self.artists)
+    [this.artist, this.artists] = removeDuplicateArtists(this.artist, this.artists)
   }
 
   getCleanTitle(){
-    return removeFeatures(self.title)
+    return removeFeatures(this.title)
   }
 
 }

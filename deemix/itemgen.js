@@ -1,8 +1,9 @@
 const {
   Single,
-  Collection,
-  Convertable
+  Collection
 } = require('./types/DownloadObjects.js')
+const { LyricsStatus } = require('deezer-js').gw
+const { map_user_playlist } = require('deezer-js').utils
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   // Check if is an isrc: url
@@ -22,6 +23,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   }
 
   // Get essential track info
+  let trackAPI_gw
   try {
     trackAPI_gw = await dz.gw.get_track_with_fallback(id)
   } catch (e){
@@ -75,12 +77,13 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     return generateTrackItem(dz, albumAPI.tracks.data[0].id, bitrate, null, albumAPI)
   }
 
-  tracksArray = await dz.gw.get_album_tracks(id)
+  let tracksArray = await dz.gw.get_album_tracks(id)
 
+  let cover
   if (albumAPI.cover_small){
-    const cover = albumAPI.cover_small.substring(0, albumAPI.cover_small.length-24) + '/75x75-000000-80-0-0.jpg'
+    cover = albumAPI.cover_small.substring(0, albumAPI.cover_small.length-24) + '/75x75-000000-80-0-0.jpg'
   }else{
-    const cover = `https://e-cdns-images.dzcdn.net/images/cover/${albumAPI_gw.ALB_PICTURE}/75x75-000000-80-0-0.jpg`
+    cover = `https://e-cdns-images.dzcdn.net/images/cover/${albumAPI_gw.ALB_PICTURE}/75x75-000000-80-0-0.jpg`
   }
 
   const totalSize = tracksArray.length
@@ -92,7 +95,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     collection.push(trackAPI)
   })
 
-  explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS || LyricsStatus.UNKNOWN)
+  let explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS || LyricsStatus.UNKNOWN)
 
   return new Collection({
     type: 'album',
@@ -130,7 +133,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
       }
     }
     // Check if private playlist and owner
-    if (!playlsitAPI.public && playlistAPI.creator.id != dz.current_user.id){
+    if (!playlistAPI.public && playlistAPI.creator.id != dz.current_user.id){
       throw new NotYourPrivatePlaylist()
     }
   }
@@ -216,8 +219,8 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
   }
   if (listener) { listener.send("startAddingArtist", rootArtist) }
 
-  let artistDiscographyAPI = dz.gw.get_artist_discography_tabs(id, 100)
-  artistDiscographyAPI.pop('all', None)
+  let artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
+  artistDiscographyAPI.pop('all', null)
   let albumList = []
   artistDiscographyAPI.forEach((type) => {
     type.forEach(async (album) => {
@@ -307,6 +310,7 @@ module.exports = {
   generateArtistItem,
   generateArtistDiscographyItem,
   generateArtistTopItem,
+
   GenerationError,
   ISRCnotOnDeezer,
   NotYourPrivatePlaylist

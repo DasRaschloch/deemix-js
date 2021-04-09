@@ -15,7 +15,7 @@ class Lyrics {
       for (let line = 0; line < syncLyricsJson.length; line++) {
         if (syncLyricsJson[line].line != ""){
           timestamp = syncLyricsJson[line].lrc_timestamp
-          milliseconds = int(syncLyricsJson[line].milliseconds)
+          milliseconds = parseInt(syncLyricsJson[line].milliseconds)
           this.syncID3.push([syncLyricsJson[line].line, milliseconds])
         }else{
           let notEmptyLine = line + 1

@@ -1,5 +1,5 @@
 function generateReplayGainString(trackGain){
-  return `${Math.round((float(trackGain) + 18.4)*-100)/100} dB`
+  return `${Math.round((parseFloat(trackGain) + 18.4)*-100)/100} dB`
 }
 
 function removeFeatures(title){

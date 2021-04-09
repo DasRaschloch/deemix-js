@@ -1,4 +1,17 @@
 const got = require('got')
+const { Artist } = require('./Artist.js')
+const { Album } = require('./Album.js')
+const { Playlist } = require('./Playlist.js')
+const { Picture } = require('./Picture.js')
+const { Lyrics } = require('./Lyrics.js')
+const { VARIOUS_ARTISTS } = require('./index.js')
+
+const {
+  generateReplayGainString,
+  removeDuplicateArtists,
+  removeFeatures,
+  andCommaConcat
+} = require('../utils/index.js')
 
 class Track {
   constructor(){
@@ -36,14 +49,14 @@ class Track {
   }
 
   parseEssentialData(trackAPI_gw, trackAPI){
-    this.id = str(trackAPI_gw.SNG_ID)
+    this.id = String(trackAPI_gw.SNG_ID)
     this.duration = trackAPI_gw.DURATION
     this.MD5 = trackAPI_gw.MD5_ORIGIN
     if (!this.MD5){
       if (trackAPI && trackAPI.md5_origin){
         this.MD5 = trackAPI.md5_origin
       }else{
-        throw MD5NotFound
+        throw new MD5NotFound
       }
     }
     this.mediaVersion = trackAPI_gw.MEDIA_VERSION
@@ -51,13 +64,14 @@ class Track {
     if (trackAPI_gw.FALLBACK){
       this.fallbackID = trackAPI_gw.FALLBACK.SNG_ID
     }
-    this.localTrack = int(this.id) < 0
+    this.localTrack = parseInt(this.id) < 0
   }
 
   async retriveFilesizes(dz){
     const guest_sid = await dz.cookie_jar.getCookies('deezer.com').sid
+    let result_json
     try{
-      const result_json = await got.post("https://api.deezer.com/1.0/gateway.php",{
+      result_json = await got.post("https://api.deezer.com/1.0/gateway.php",{
         searchParams:{
           api_key: "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
           sid: guest_sid,
@@ -69,12 +83,12 @@ class Track {
         headers: dz.headers,
         timeout: 30000
       }).json()
-    }catch{
-      console.log(e)
+    }catch (e){
+      console.error(e)
       await new Promise(r => setTimeout(r, 2000)) // sleep(2000ms)
       return this.retriveFilesizes(dz)
     }
-    if (result_json.error.length){ throw APIError }
+    if (result_json.error.length){ throw new TrackError(result_json.error) }
     const response = result_json.results
     let filesizes = {}
     Object.entries(response).forEach((value, key) => {
@@ -88,7 +102,7 @@ class Track {
 
   async parseData(dz, id, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI, playlistAPI){
     if (id && !trackAPI_gw) { trackAPI_gw = await dz.gw.get_track_with_fallback(id) }
-    else if (!trackAPI_gw) { throw NoDataToParse }
+    else if (!trackAPI_gw) { throw new NoDataToParse }
 
     if (!trackAPI) {
       try { trackAPI = await dz.api.get_track(trackAPI_gw.SNG_ID) }
@@ -111,18 +125,18 @@ class Track {
       if (this.lyrics.id != "0"){ this.lyrics.parseLyrics(trackAPI_gw.LYRICS) }
 
       // Parse Album Data
-      this.album = Album(trackAPI_gw.ALB_ID, trackAPI_gw.ALB_TITLE, trackAPI_gw.ALB_PICTURE || "")
+      this.album = new Album(trackAPI_gw.ALB_ID, trackAPI_gw.ALB_TITLE, trackAPI_gw.ALB_PICTURE || "")
 
       // Get album Data
       if (!albumAPI){
         try { albumAPI = await dz.api.get_album(this.album.id) }
-        catch { albumAPI = None }
+        catch { albumAPI = null }
       }
 
       // Get album_gw Data
       if (!albumAPI_gw){
         try { albumAPI_gw = await dz.gw.get_album(this.album.id) }
-        catch { albumAPI_gw = None }
+        catch { albumAPI_gw = null }
       }
 
       if (albumAPI){
@@ -132,10 +146,10 @@ class Track {
         // albumAPI_gw doesn't contain the artist cover
         // Getting artist image ID
         // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
-        const artistAPI = await dz.api.get_artist(self.album.mainArtist.id)
-        self.album.mainArtist.pic.md5 = artistAPI.picture_small.substring( artistAPI.picture_small.search('artist/')+7, artistAPI.picture_small.length-24 )
+        const artistAPI = await dz.api.get_artist(this.album.mainArtist.id)
+        this.album.mainArtist.pic.md5 = artistAPI.picture_small.substring( artistAPI.picture_small.search('artist/')+7, artistAPI.picture_small.length-24 )
       }else{
-        throw AlbumDoesntExists
+        throw new AlbumDoesntExists
       }
 
       // Fill missing data
@@ -156,7 +170,7 @@ class Track {
 
     this.position = trackAPI_gw.POSITION
 
-    if (playlistAPI) { this.playlist = Playlist(playlistAPI) }
+    if (playlistAPI) { this.playlist = new Playlist(playlistAPI) }
 
     this.generateMainFeatStrings()
     return this
@@ -166,12 +180,12 @@ class Track {
     // Local tracks has only the trackAPI_gw page and
     // contains only the tags provided by the file
     this.title = trackAPI_gw.SNG_TITLE
-    this.album = Album(trackAPI_gw.ALB_TITLE)
-    this.album.pic = Picture(
+    this.album = new Album(trackAPI_gw.ALB_TITLE)
+    this.album.pic = new Picture(
         trackAPI_gw.ALB_PICTURE || "",
         "cover"
     )
-    this.mainArtist = Artist(trackAPI_gw.ART_NAME)
+    this.mainArtist = new Artist(trackAPI_gw.ART_NAME)
     this.artists = [trackAPI_gw.ART_NAME]
     this.artist = {
         'Main': [trackAPI_gw.ART_NAME]
@@ -190,16 +204,16 @@ class Track {
     }
 
     this.discNumber = trackAPI_gw.DISK_NUMBER
-    this.explicit = bool(int(trackAPI_gw.EXPLICIT_LYRICS || "0"))
+    this.explicit = Boolean(parseInt(trackAPI_gw.EXPLICIT_LYRICS || "0"))
     this.copyright = trackAPI_gw.COPYRIGHT
     if (trackAPI_gw.GAIN) this.replayGain = generateReplayGainString(trackAPI_gw.GAIN)
     this.ISRC = trackAPI_gw.ISRC
     this.trackNumber = trackAPI_gw.TRACK_NUMBER
     this.contributors = trackAPI_gw.SNG_CONTRIBUTORS
 
-    this.lyrics = Lyrics(trackAPI_gw.LYRICS_ID || "0")
+    this.lyrics = new Lyrics(trackAPI_gw.LYRICS_ID || "0")
 
-    this.mainArtist = Artist(
+    this.mainArtist = new Artist(
       trackAPI_gw.ART_ID,
       trackAPI_gw.ART_NAME,
       trackAPI_gw.ART_PICTRUE
@@ -221,7 +235,7 @@ class Track {
     if (!this.discNumber) this.discNumber = trackAPI.disk_number
 
     trackAPI.contributors.forEach(artist => {
-      const isVariousArtists = str(artist.id) == VARIOUS_ARTISTS
+      const isVariousArtists = String(artist.id) == VARIOUS_ARTISTS
       const isMainArtist = artist.role == "Main"
 
       if (trackAPI.contributors.length > 1 && isVariousArtists) return
@@ -230,7 +244,7 @@ class Track {
         this.artsits.push(artist.name)
 
       if (isMainArtist || !this.artsit.Main.contains(artist.name) && !isMainArtist){
-        if (!this.artist[aritst.role])
+        if (!this.artist[artist.role])
           this.artist[artist.role] = []
         this.artist[artist.role].push(artist.name)
       }
@@ -260,8 +274,37 @@ class Track {
     }
   }
 
-  applySettings(settings, TEMPDIR, embeddedImageFormat){
+  applySettings(settings){
+    // TODO: Applay settings
+    settings;
+  }
+}
 
+class TrackError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "TrackError";
+  }
+}
+
+class MD5NotFound extends TrackError {
+  constructor(message) {
+    super(message);
+    this.name = "MD5NotFound";
+  }
+}
+
+class NoDataToParse extends TrackError {
+  constructor(message) {
+    super(message);
+    this.name = "NoDataToParse";
+  }
+}
+
+class AlbumDoesntExists extends TrackError {
+  constructor(message) {
+    super(message);
+    this.name = "AlbumDoesntExists";
   }
 }
 

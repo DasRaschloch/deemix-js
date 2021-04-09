@@ -39,7 +39,7 @@ class IDownloadObject{
   }
 
   getResettedDict(){
-    item = this.toDict()
+    let item = this.toDict()
     item.downloaded = 0
     item.failed = 0
     item.progress = 0
@@ -49,8 +49,8 @@ class IDownloadObject{
   }
 
   getSlimmedDict(){
-    light = this.toDict()
-    propertiesToDelete = ['single', 'collection', 'convertable']
+    let light = this.toDict()
+    let propertiesToDelete = ['single', 'collection', 'convertable']
     propertiesToDelete.forEach((property) => {
       if (Object.keys(light).includes(property)){
         delete light[property]
@@ -77,7 +77,7 @@ class Single extends IDownloadObject{
   }
 
   toDict(){
-    item = super.toDict()
+    let item = super.toDict()
     item.single = this.single
     return item
   }
@@ -101,7 +101,7 @@ class Collection extends IDownloadObject{
   }
 
   toDict(){
-    item = super.toDict()
+    let item = super.toDict()
     item.collection = this.collection
     return item
   }
@@ -126,7 +126,7 @@ class Convertable extends Collection{
   }
 
   toDict(){
-    item = super.toDict()
+    let item = super.toDict()
     item.plugin = this.plugin
     item.conversion_data = this.conversion_data
   }

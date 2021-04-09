@@ -1,10 +1,10 @@
 const { Artist } = require('./Artist.js')
 const { Date } = require('./Date.js')
-const { Picture } = require('./Picture.js')
+const { Picture, StaticPicture } = require('./Picture.js')
 
 class Playlist {
   constructor(playlistAPI) {
-    this.id = `pl_${str(playlistAPI.id)}`
+    this.id = `pl_${playlistAPI.id}`
     this.title = playlistAPI.title
     this.artist = {"Main": []}
     this.artists = []
@@ -25,23 +25,23 @@ class Playlist {
     this.owner = playlistAPI.creator
 
     if (playlistAPI.picture_small.indexOf("dzcdn.net") != -1) {
-      url = playlistAPI.picture_small
+      let url = playlistAPI.picture_small
       let picType = url.substring(url.indexOf('images/')+7)
       picType = picType.substring(0, picType.indexOf('/'))
       let md5 = url.substring( url.indexOf(picType+'/') + picType.length+1, url.length-24 )
-      this.pic = Picture(md5 = md5, type = picType)
+      this.pic = Picture(md5, picType)
     } else {
-      this.pic = Picture(url = playlistAPI.picture_xl)
+      this.pic = StaticPicture(playlistAPI.picture_xl)
     }
 
     if (playlistAPI.various_artist) {
       let pic_md5 = playlistAPI.various_artist.picture_small
       pic_md5 = pic_md5.substring( pic_md5.indexOf('artist/')+7, pic_md5.length-24 )
       this.variousArtists = Artist(
-        id = playlistAPI.various_artist.id,
-        name = playlistAPI.various_artist.name,
-        role = playlistAPI.various_artist.role,
-        pic_md5 = pic_md5
+        playlistAPI.various_artist.id,
+        playlistAPI.various_artist.name,
+        playlistAPI.various_artist.role,
+        pic_md5
       )
       this.mainArtist = this.variousArtists
     }
