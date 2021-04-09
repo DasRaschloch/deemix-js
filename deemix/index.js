@@ -79,5 +79,6 @@ module.exports = {
     ...require('./types/Picture.js'),
     ...require('./types/Playlist.js'),
     ...require('./types/Track.js'),
-  }
+  },
+  downloader: require('./downloader.js')
 }

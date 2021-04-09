@@ -1,8 +1,11 @@
-const { Track } = require('./types/Track.js')
+const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { streamTrack, generateStreamURL } = require('./decryption.js')
 const { TrackFormats } = require('deezer-js')
+const { USER_AGENT_HEADER } = require('./utils/index.js')
+const got = require('got')
+const fs = require('fs-sync')
 
-function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
+async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
   bitrate = parseInt(bitrate)
   if (track.localTrack) { return TrackFormats.LOCAL }
 
@@ -37,9 +40,21 @@ function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
     if (Object.keys(track.filesizes).contains(`FILESIZE_${formatName}`)){
       if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
       if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
-        // Try getting the streamURL
-        generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
-        track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
+        try {
+          let request = await got.get(
+            generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
+            { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
+          ).on("response", (response)=>{
+            track.filesizes[`FILESIZE_${formatName}`] = response.headers["Content-Length"]
+            track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
+            request.cancel()
+          }).on("error", (e)=>{
+            if (request.isCanceled) { return }
+            throw e
+          })
+
+          return formatNumber
+        } catch { /*nothing*/ }
       }
     }
 
@@ -59,8 +74,8 @@ function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
         })
       }
     }
-  }
 
+  }
   if (is360Format) throw new TrackNot360
   return TrackFormats.DEFAULT
 }
@@ -78,17 +93,17 @@ class Downloader {
     this.playlistURLs = []
   }
 
-  start(){
+  async start(){
     if (this.downloadObject.__type__ === "Single"){
-      this.download({
+      await this.download({
         trackAPI_gw: this.downloadObject.single.trackAPI_gw,
         trackAPI: this.downloadObject.single.trackAPI,
         albumAPI: this.downloadObject.single.albumAPI
       })
     } else if (this.downloadObject.__type__ === "Collection") {
       let tracks = []
-      this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
-        tracks[pos] = this.download({
+      this.downloadObject.collection.tracks_gw.forEach(async (track, pos) => {
+        tracks[pos] = await this.download({
           trackAPI_gw: track,
           albumAPI: this.downloadObject.collection.albumAPI,
           playlistAPI: this.downloadObject.collection.playlistAPI
@@ -106,31 +121,65 @@ class Downloader {
     // Generate track object
     if (!track){
       track = Track()
-      await track.parseData(
-        this.dz,
-        trackAPI_gw,
-        trackAPI,
-        albumAPI,
-        playlistAPI
-      )
+      console.log("Getting tags")
+      try{
+        await track.parseData(
+          this.dz,
+          trackAPI_gw,
+          trackAPI,
+          albumAPI,
+          playlistAPI
+        )
+      } catch (e){
+        if (e instanceof AlbumDoesntExists) { throw new DownloadError('albumDoesntExists') }
+        console.error(e)
+        throw e
+      }
+
     }
 
     // Check if the track is encoded
     if (track.MD5 === "") throw new DownloadFailed("notEncoded", track)
 
     // Check the target bitrate
-    let selectedFormat = getPreferredBitrate(
-      track,
-      this.bitrate,
-      this.settings.fallbackBitrate,
-      this.downloadObject.uuid, this.listener
-    )
-
+    console.log("Getting bitrate")
+    let selectedFormat
+    try{
+      selectedFormat = getPreferredBitrate(
+        track,
+        this.bitrate,
+        this.settings.fallbackBitrate,
+        this.downloadObject.uuid, this.listener
+      )
+    }catch (e){
+      if (e instanceof PreferredBitrateNotFound) { throw new DownloadFailed("wrongBitrate", track) }
+      if (e instanceof TrackNot360) { throw new DownloadFailed("no360RA") }
+      console.error(e)
+      throw e
+    }
     track.bitrate = selectedFormat
     track.album.bitrate = selectedFormat
 
+    // Generate covers URLs
+    // Apply Settings
+    // Generate filename and filepath from metadata
+    // Remove Subfolders from filename and add it to filepath
+    // Make sure the filepath exsists
+    // Save extrasPath
+    // Download and cache the coverart
+    // Save local album art
+    // Save artist art
+    // Save playlist art
+    // Save lyrics in lrc file
+    // Check for overwrite settings
+
     // Download the track
+    console.log("Downloading")
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+    let stream = fs.open('./writepath', 'wb')
+    streamTrack(stream, track, 0, this.downloadObject, this.listener)
+    stream.close()
+    // Adding tags
 
   }
 }
@@ -167,5 +216,8 @@ class PreferredBitrateNotFound extends Error {
 module.exports = {
   Downloader,
   DownloadError,
-  DownloadFailed
+  DownloadFailed,
+  getPreferredBitrate,
+  TrackNot360,
+  PreferredBitrateNotFound
 }

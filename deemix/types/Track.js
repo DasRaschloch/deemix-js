@@ -309,5 +309,6 @@ class AlbumDoesntExists extends TrackError {
 }
 
 module.exports = {
-  Track
+  Track,
+  AlbumDoesntExists
 }
