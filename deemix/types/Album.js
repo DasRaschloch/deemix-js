@@ -14,7 +14,7 @@ class Album {
     this.artist = {"Main": []}
     this.artists = []
     this.mainArtist = null
-    this.date = Date()
+    this.date = new Date()
     this.dateString = ""
     this.trackTotal = "0"
     this.discTotal = "0"

@@ -68,7 +68,8 @@ class Track {
   }
 
   async retriveFilesizes(dz){
-    const guest_sid = await dz.cookie_jar.getCookies('deezer.com').sid
+    let guest_sid = await dz.cookie_jar.getCookies('https://www.deezer.com')
+    guest_sid = guest_sid.find(element => element.key === 'sid').value
     let result_json
     try{
       result_json = await got.post("https://api.deezer.com/1.0/gateway.php",{
@@ -80,7 +81,7 @@ class Track {
           method: 'song_getData'
         },
         json: {sng_id: this.id},
-        headers: dz.headers,
+        headers: dz.http_headers,
         timeout: 30000
       }).json()
     }catch (e){
@@ -91,7 +92,8 @@ class Track {
     if (result_json.error.length){ throw new TrackError(result_json.error) }
     const response = result_json.results
     let filesizes = {}
-    Object.entries(response).forEach((value, key) => {
+    Object.entries(response).forEach((entry) => {
+      let [key, value] = entry
       if (key.startsWith("FILESIZE_")){
         filesizes[key] = value
         filesizes[key+"_TESTED"] = false
@@ -240,8 +242,8 @@ class Track {
 
       if (trackAPI.contributors.length > 1 && isVariousArtists) return
 
-      if (!this.artsits.contains(artist.name))
-        this.artsits.push(artist.name)
+      if (this.artists.indexOf(artist.name) == -1)
+        this.artists.push(artist.name)
 
       if (isMainArtist || !this.artsit.Main.contains(artist.name) && !isMainArtist){
         if (!this.artist[artist.role])
@@ -252,7 +254,7 @@ class Track {
   }
 
   removeDuplicateArtists(){
-    [this.artist, this.artsits] = removeDuplicateArtists(this.artist, this.artists)
+    [this.artist, this.artists] = removeDuplicateArtists(this.artist, this.artists)
   }
 
   getCleanTitle(){

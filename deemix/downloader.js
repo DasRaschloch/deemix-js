@@ -22,7 +22,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     "MP4_RA1": TrackFormats.MP4_RA1
   }
 
-  const is360Format = Object.values(formats_360).contains(bitrate)
+  const is360Format = Object.values(formats_360).indexOf(bitrate) != -1
   let formats
   if (!shouldFallback){
     formats = {...formats_360, ...formats_non_360}
@@ -36,25 +36,29 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     let formatName = Object.keys(formats)[i]
     let formatNumber = formats[formatName]
 
-    if (formatNumber >= bitrate) { continue }
-    if (Object.keys(track.filesizes).contains(`FILESIZE_${formatName}`)){
+    if (formatNumber > bitrate) { continue }
+    if (Object.keys(track.filesizes).indexOf(`FILESIZE_${formatName}`) != -1){
       if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
       if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
+        let request
         try {
-          let request = await got.get(
+          request = got.get(
             generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
             { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
           ).on("response", (response)=>{
-            track.filesizes[`FILESIZE_${formatName}`] = response.headers["Content-Length"]
+            track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
             track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
             request.cancel()
           }).on("error", (e)=>{
-            if (request.isCanceled) { return }
             throw e
           })
 
-          return formatNumber
-        } catch { /*nothing*/ }
+          await request
+        } catch (e){
+          if (e.isCanceled) { return formatNumber }
+          console.error(e)
+          throw e
+        }
       }
     }
 
@@ -120,11 +124,12 @@ class Downloader {
 
     // Generate track object
     if (!track){
-      track = Track()
+      track = new Track()
       console.log("Getting tags")
       try{
         await track.parseData(
           this.dz,
+          trackAPI_gw.SNG_ID,
           trackAPI_gw,
           trackAPI,
           albumAPI,
@@ -145,10 +150,10 @@ class Downloader {
     console.log("Getting bitrate")
     let selectedFormat
     try{
-      selectedFormat = getPreferredBitrate(
+      selectedFormat = await getPreferredBitrate(
         track,
         this.bitrate,
-        this.settings.fallbackBitrate,
+        true, // fallbackBitrate
         this.downloadObject.uuid, this.listener
       )
     }catch (e){
