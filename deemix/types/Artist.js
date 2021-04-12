@@ -1,5 +1,5 @@
 const { Picture } = require('./Picture.js')
-const { VARIOUS_ARTISTS } = require('../index.js')
+const { VARIOUS_ARTISTS } = require('./index.js')
 
 class Artist {
   constructor(id="0", name="", role = "", pic_md5 = ""){

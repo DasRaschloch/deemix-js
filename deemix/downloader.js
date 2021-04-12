@@ -181,9 +181,8 @@ class Downloader {
     // Download the track
     console.log("Downloading")
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
-    let stream = fs.openSync('./writepath', 'w')
-    streamTrack(stream, track, 0, this.downloadObject, this.listener)
-    fs.closeSync(stream)
+    let stream = fs.createWriteStream('./writepath')
+    await streamTrack(stream, track, 0, this.downloadObject, this.listener)
     // Adding tags
 
   }

@@ -11,7 +11,6 @@
   "dependencies": {
     "crypto": "^1.0.1",
     "deezer-js": "^0.0.3",
-    "fs-sync": "^1.0.6",
     "got": "^11.8.2"
   },
   "devDependencies": {

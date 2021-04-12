@@ -1,5 +1,6 @@
 const crypto = require('crypto')
-const got = require('got');
+const got = require('got')
+const { USER_AGENT_HEADER } = require('./utils/index.js')
 
 function _md5 (data, type = 'binary') {
   let md5sum = crypto.createHash('md5')
@@ -42,14 +43,13 @@ function reverseStreamURL(url){
   return reverseStreamPath(urlPart)
 }
 
-function streamTrack(outputStream, track, start=0, downloadObject, listener){
-  let headers = {'User-Agent': ""}
+async function streamTrack(outputStream, track, start=0, downloadObject, listener){
+  let headers = {'User-Agent': USER_AGENT_HEADER}
   let chunkLength = start
   let complete = 0
 
-  got.get(track.downloadURL, {
+  let response = got.stream(track.downloadURL, {
     headers: headers,
-    stream: true,
     timeout: 10000
   }).on('response', (response)=>{
     complete = parseInt(response.headers["content-length"])
@@ -60,26 +60,31 @@ function streamTrack(outputStream, track, start=0, downloadObject, listener){
     }else {
       console.log(`downloading ${complete} bytes`)
     }
-  }).on("data", (data)=>{
-    console.log("data")
-    outputStream.write(data)
-    chunkLength += data.length
+  }).on("readable", ()=>{
+    let chunk;
+    while ((chunk = response.read(2048 * 3))){
+      chunkLength += chunk.length
 
-    if (downloadObject){
-      let chunkProgres
-      if (downloadObject.__type__ === "Single"){
-        chunkProgres = (chunkLength / (complete + start)) * 100
-        downloadObject.progressNext = chunkProgres
-      }else{
-        chunkProgres = (data.length / (complete + start)) / downloadObject.size * 100
-        downloadObject.progressNext += chunkProgres
+      if (downloadObject){
+        let chunkProgres
+        if (downloadObject.__type__ === "Single"){
+          chunkProgres = (chunkLength / (complete + start)) * 100
+          downloadObject.progressNext = chunkProgres
+        }else{
+          chunkProgres = (chunk.length / (complete + start)) / downloadObject.size * 100
+          downloadObject.progressNext += chunkProgres
+        }
+        downloadObject.updateProgress(listener)
       }
-      downloadObject.updateProgress(listener)
     }
+
   }).on("error", (error)=>{
     console.error(error)
     return streamTrack(outputStream, track, chunkLength, downloadObject, listener)
   })
+
+  response.pipe(outputStream)
+  await response
 }
 
 class DownloadEmpty extends Error {
