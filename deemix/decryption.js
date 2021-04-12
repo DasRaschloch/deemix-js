@@ -47,20 +47,21 @@ function streamTrack(outputStream, track, start=0, downloadObject, listener){
   let chunkLength = start
   let complete = 0
 
-  got.get(track.downloadUrl, {
+  got.get(track.downloadURL, {
     headers: headers,
     stream: true,
     timeout: 10000
   }).on('response', (response)=>{
-    complete = parseInt(response.headers["Content-Length"])
+    complete = parseInt(response.headers["content-length"])
     if (complete == 0) throw new DownloadEmpty
     if (start != 0){
-      let responseRange = response.headers["Content-Range"]
+      let responseRange = response.headers["content-range"]
       console.log(`downloading range ${responseRange}`)
     }else {
       console.log(`downloading ${complete} bytes`)
     }
   }).on("data", (data)=>{
+    console.log("data")
     outputStream.write(data)
     chunkLength += data.length
 

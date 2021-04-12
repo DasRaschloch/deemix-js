@@ -3,7 +3,7 @@ const { streamTrack, generateStreamURL } = require('./decryption.js')
 const { TrackFormats } = require('deezer-js')
 const { USER_AGENT_HEADER } = require('./utils/index.js')
 const got = require('got')
-const fs = require('fs-sync')
+const fs = require('fs')
 
 async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
   bitrate = parseInt(bitrate)
@@ -181,9 +181,9 @@ class Downloader {
     // Download the track
     console.log("Downloading")
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
-    let stream = fs.open('./writepath', 'wb')
+    let stream = fs.openSync('./writepath', 'w')
     streamTrack(stream, track, 0, this.downloadObject, this.listener)
-    stream.close()
+    fs.closeSync(stream)
     // Adding tags
 
   }
