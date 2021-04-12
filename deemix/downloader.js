@@ -183,6 +183,7 @@ class Downloader {
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
     let stream = fs.createWriteStream('./writepath')
     await streamTrack(stream, track, 0, this.downloadObject, this.listener)
+    console.log("done")
     // Adding tags
 
   }

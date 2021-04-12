@@ -1,5 +1,10 @@
 const crypto = require('crypto')
 const got = require('got')
+const stream = require('stream')
+
+const {promisify} = require('util')
+const pipeline = promisify(stream.pipeline)
+
 const { USER_AGENT_HEADER } = require('./utils/index.js')
 
 function _md5 (data, type = 'binary') {
@@ -83,8 +88,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     return streamTrack(outputStream, track, chunkLength, downloadObject, listener)
   })
 
-  response.pipe(outputStream)
-  await response
+  await pipeline(response, outputStream)
 }
 
 class DownloadEmpty extends Error {
