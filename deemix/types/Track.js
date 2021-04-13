@@ -5,6 +5,8 @@ const { Playlist } = require('./Playlist.js')
 const { Picture } = require('./Picture.js')
 const { Lyrics } = require('./Lyrics.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
+const { changeCase } = require('../utils/index.js')
+const { FeaturesOption } = require('../settings.js')
 
 const {
   generateReplayGainString,
@@ -41,7 +43,6 @@ class Track {
     this.position = null
     this.searched = false
     this.bitrate = 0
-    this.singleDownload = false
     this.dateString = ""
     this.artistsString = ""
     this.mainArtistsString = ""
@@ -277,8 +278,86 @@ class Track {
   }
 
   applySettings(settings){
-    // TODO: Applay settings
-    settings;
+    // Check if should save the playlist as a compilation
+    if (settings.tags.savePlaylistAsCompilation && this.playlist){
+      this.trackNumber = this.position
+      this.discNumber = "1"
+      this.album.makePlaylistCompilation(this.playlist)
+    } else {
+      if (this.album.date) this.date = this.album.date
+    }
+    this.dateString = this.date.format(settings.dateFormat)
+    this.album.dateString = this.album.date.format(settings.dateFormat)
+    if (this.playlist) this.playlist.dateString = this.playlist.date.format(settings.dateFormat)
+
+    // Check various artist option
+    if (settings.albumVariousArtists && this.album.variousArtists){
+      let artist = this.album.variousArtists
+      let isMainArtist = artist.role === "Main"
+
+      if (this.album.artists.indexOf(artist.name) == -1)
+        this.album.artists.push(artist.name)
+
+      if (isMainArtist || !this.album.artsit.Main.contains(artist.name) && !isMainArtist){
+        if (!this.album.artist[artist.role])
+          this.album.artist[artist.role] = []
+        this.album.artist[artist.role].push(artist.name)
+      }
+    }
+    this.album.mainArtist.save = (!this.album.mainArtist.isVariousArtists() || settings.albumVariousArtists && this.album.mainArtist.isVariousArtists())
+
+    // Check removeDuplicateArtists
+    if (settings.removeDuplicateArtists) this.removeDuplicateArtists()
+
+    // Check if user wants the feat in the title
+    if (settings.featuredToTitle == FeaturesOption.REMOVE_TITLE){
+      this.title = this.getCleanTitle()
+    }else if (settings.featuredToTitle == FeaturesOption.MOVE_TITLE){
+      this.title = this.getFeatTitle()
+    }else if (settings.featuredToTitle == FeaturesOption.REMOVE_TITLE_ALBUM){
+      this.title = this.getCleanTitle()
+      this.album.title = this.album.getCleanTitle()
+    }
+
+    // Remove (Album Version) from tracks that have that
+    if (settings.removeAlbumVersion && this.title.indexOf("Album Version") != -1){
+      this.title = this.title.replace(/ ?\(Album Version\)/g, '').trim()
+    }
+
+    // Change title and artist casing if needed
+    if (settings.titleCasing != "nothing"){
+      this.title = changeCase(this.title, settings.titleCasing)
+    } else if (settings.artistCasing != "nothing"){
+      this.mainArtist.name = changeCase(this.mainArtist.name, settings.artistCasing)
+      this.artists.forEach((artist, i) => {
+        this.artists[i] = changeCase(artist, settings.artistCasing)
+      })
+      Object.keys(this.artist).forEach((art_type) => {
+        this.artist[art_type].forEach((artist, i) => {
+          this.artist[art_type][i] = changeCase(artist, settings.artistCasing)
+        })
+      })
+    }
+
+    // Generate artist tag
+    if (settings.tags.multiArtistSeparator == "default"){
+      if (settings.featuredToTitle == FeaturesOption.MOVE_TITLE){
+        this.artistsString = this.artist.Main.join(", ")
+      } else {
+        this.artistString = this.artists.join(", ")
+      }
+    } else if (settings.tags.multiArtistSeparator == "andFeat"){
+      this.artsitsString = this.mainArtistsString
+      if (this.featArtistsString && settings.featuredToTitle != FeaturesOption.MOVE_TITLE)
+        this.artistsString += ` ${this.featArtistsString}`
+    } else {
+      let separator = settings.tags.multiArtistSeparator
+      if (settings.featuredToTitle == FeaturesOption.MOVE_TITLE){
+        this.artsitsString = this.artsit.Main.join(separator)
+      } else {
+        this.artsitsString = this.artists.join(separator)
+      }
+    }
   }
 }
 

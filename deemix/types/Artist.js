@@ -10,7 +10,7 @@ class Artist {
     this.save = true
   }
 
-  ifVariousArtist(){
+  isVariousArtists(){
     return this.id == VARIOUS_ARTISTS
   }
 }

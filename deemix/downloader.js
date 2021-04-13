@@ -2,8 +2,21 @@ const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { streamTrack, generateStreamURL } = require('./decryption.js')
 const { TrackFormats } = require('deezer-js')
 const { USER_AGENT_HEADER } = require('./utils/index.js')
+const { DEFAULTS } = require('./settings.js')
+const { generatePath } = require('./utils/pathtemplates.js')
 const got = require('got')
 const fs = require('fs')
+
+const extensions = {
+    [TrackFormats.FLAC]:    '.flac',
+    [TrackFormats.LOCAL]:   '.mp3',
+    [TrackFormats.MP3_320]: '.mp3',
+    [TrackFormats.MP3_128]: '.mp3',
+    [TrackFormats.DEFAULT]: '.mp3',
+    [TrackFormats.MP4_RA3]: '.mp4',
+    [TrackFormats.MP4_RA2]: '.mp4',
+    [TrackFormats.MP4_RA1]: '.mp4'
+}
 
 async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
   bitrate = parseInt(bitrate)
@@ -12,17 +25,17 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
   let falledBack = false
 
   const formats_non_360 = {
-    "FLAC": TrackFormats.FLAC,
-    "MP3_320": TrackFormats.MP3_320,
-    "MP3_128": TrackFormats.MP3_128
+    [TrackFormats.FLAC]: "FLAC",
+    [TrackFormats.MP3_320]: "MP3_320",
+    [TrackFormats.MP3_128]: "MP3_128"
   }
   const formats_360 = {
-    "MP4_RA3": TrackFormats.MP4_RA3,
-    "MP4_RA2": TrackFormats.MP4_RA2,
-    "MP4_RA1": TrackFormats.MP4_RA1
+    [TrackFormats.MP4_RA3]: "MP4_RA3",
+    [TrackFormats.MP4_RA2]: "MP4_RA2",
+    [TrackFormats.MP4_RA1]: "MP4_RA1"
   }
 
-  const is360Format = Object.values(formats_360).indexOf(bitrate) != -1
+  const is360Format = Object.keys(formats_360).indexOf(bitrate) != -1
   let formats
   if (!shouldFallback){
     formats = {...formats_360, ...formats_non_360}
@@ -33,8 +46,8 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
   }
 
   for (let i = 0; i < Object.keys(formats).length; i++){
-    let formatName = Object.keys(formats)[i]
-    let formatNumber = formats[formatName]
+    let formatNumber = Object.keys(formats)[i]
+    let formatName = formats[formatNumber]
 
     if (formatNumber > bitrate) { continue }
     if (Object.keys(track.filesizes).indexOf(`FILESIZE_${formatName}`) != -1){
@@ -88,7 +101,7 @@ class Downloader {
   constructor(dz, downloadObject, settings, listener){
     this.dz = dz
     this.downloadObject = downloadObject
-    this.settings = settings
+    this.settings = settings || DEFAULTS
     this.bitrate = downloadObject.bitrate
     this.listener = listener
 
@@ -165,12 +178,26 @@ class Downloader {
     track.bitrate = selectedFormat
     track.album.bitrate = selectedFormat
 
-    // Generate covers URLs
     // Apply Settings
+    track.applySettings(this.settings)
+
     // Generate filename and filepath from metadata
-    // Remove Subfolders from filename and add it to filepath
+    let {
+      filename,
+      filepath,
+      artistPath,
+      coverPath,
+      extrasPath
+    } = generatePath(track, this.downloadObject, this.settings)
+
     // Make sure the filepath exsists
+    fs.mkdirSync(filepath, { recursive: true })
+    let writepath = `${filepath}/${filename}${extensions[track.bitrate]}`
+
     // Save extrasPath
+    if (extrasPath && !this.extrasPath) this.extrasPath = extrasPath
+
+    // Generate covers URLs
     // Download and cache the coverart
     // Save local album art
     // Save artist art
@@ -181,9 +208,9 @@ class Downloader {
     // Download the track
     console.log("Downloading")
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
-    let stream = fs.createWriteStream('./writepath')
+    let stream = fs.createWriteStream(writepath)
     await streamTrack(stream, track, 0, this.downloadObject, this.listener)
-    console.log("done")
+    console.log(filename)
     // Adding tags
 
   }
