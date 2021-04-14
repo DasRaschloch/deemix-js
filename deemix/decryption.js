@@ -1,11 +1,7 @@
 const crypto = require('crypto')
 const got = require('got')
-const stream = require('stream')
 
-const {promisify} = require('util')
-const pipeline = promisify(stream.pipeline)
-
-const { USER_AGENT_HEADER } = require('./utils/index.js')
+const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 
 function _md5 (data, type = 'binary') {
   let md5sum = crypto.createHash('md5')
@@ -82,10 +78,9 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
         downloadObject.updateProgress(listener)
       }
     }
-
   }).on("error", (error)=>{
     console.error(error)
-    return streamTrack(outputStream, track, chunkLength, downloadObject, listener)
+    streamTrack(outputStream, track, chunkLength, downloadObject, listener)
   })
 
   await pipeline(response, outputStream)

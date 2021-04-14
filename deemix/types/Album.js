@@ -28,6 +28,10 @@ class Album {
     this.bitrate = 0
     this.rootArtist = null
     this.variousArtists = null
+
+    this.playlistId = null
+    this.owner = null
+    this.isPlaylist = false
   }
 
   parseAlbum(albumAPI){
@@ -152,6 +156,7 @@ class Album {
     this.playlistId = playlist.playlistId
     this.owner = playlist.owner
     this.pic = playlist.pic
+    this.isPlaylist = true
   }
 
   removeDuplicateArtists(){

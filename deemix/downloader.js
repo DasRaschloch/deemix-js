@@ -1,22 +1,36 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { streamTrack, generateStreamURL } = require('./decryption.js')
 const { tagID3 } = require('./tagger.js')
-const { TrackFormats } = require('deezer-js')
-const { USER_AGENT_HEADER } = require('./utils/index.js')
-const { DEFAULTS } = require('./settings.js')
+const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
+const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath } = require('./utils/pathtemplates.js')
+const { TrackFormats } = require('deezer-js')
 const got = require('got')
 const fs = require('fs')
+const { tmpdir } = require('os')
 
 const extensions = {
-    [TrackFormats.FLAC]:    '.flac',
-    [TrackFormats.LOCAL]:   '.mp3',
-    [TrackFormats.MP3_320]: '.mp3',
-    [TrackFormats.MP3_128]: '.mp3',
-    [TrackFormats.DEFAULT]: '.mp3',
-    [TrackFormats.MP4_RA3]: '.mp4',
-    [TrackFormats.MP4_RA2]: '.mp4',
-    [TrackFormats.MP4_RA1]: '.mp4'
+  [TrackFormats.FLAC]:    '.flac',
+  [TrackFormats.LOCAL]:   '.mp3',
+  [TrackFormats.MP3_320]: '.mp3',
+  [TrackFormats.MP3_128]: '.mp3',
+  [TrackFormats.DEFAULT]: '.mp3',
+  [TrackFormats.MP4_RA3]: '.mp4',
+  [TrackFormats.MP4_RA2]: '.mp4',
+  [TrackFormats.MP4_RA1]: '.mp4'
+}
+
+const TEMPDIR = tmpdir()+`/deemix-imgs`
+fs.mkdirSync(TEMPDIR, { recursive: true })
+
+async function downloadImage(url, path, overwrite){
+  if (fs.existsSync(path) && [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].indexOf(overwrite) == -1) return path
+
+  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000})
+  const fileWriterStream = fs.createWriteStream(path)
+
+  await pipeline(downloadStream, fileWriterStream)
+  return path
 }
 
 async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
@@ -200,7 +214,18 @@ class Downloader {
     if (extrasPath && !this.extrasPath) this.extrasPath = extrasPath
 
     // Generate covers URLs
+    let embeddedImageFormat = `jpg-${this.settings.jpegImageQuality}`
+    if (this.settings.embeddedArtworkPNG) embeddedImageFormat = 'png'
+
+    track.album.embeddedCoverURL = track.album.pic.getURL(this.settings.embeddedArtworkSize, embeddedImageFormat)
+    let ext = track.album.embeddedCoverURL.slice(-4)
+    if (ext.charAt(0) != '.') ext = '.jpg'
+    track.album.embeddedCoverPath = `${TEMPDIR}/${track.album.isPlaylist ? 'pl'+track.playlist.id : 'alb'+track.album.id}_${this.settings.embeddedArtworkSize}${ext}`
+
     // Download and cache the coverart
+    track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
+    console.log("Albumart downloaded")
+
     // Save local album art
     // Save artist art
     // Save playlist art

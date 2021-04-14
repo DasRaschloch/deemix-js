@@ -1,3 +1,7 @@
+const stream = require('stream')
+const {promisify} = require('util')
+const pipeline = promisify(stream.pipeline)
+
 const USER_AGENT_HEADER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
 
 function generateReplayGainString(trackGain){
@@ -58,5 +62,6 @@ module.exports = {
   removeFeatures,
   andCommaConcat,
   uniqueArray,
-  removeDuplicateArtists
+  removeDuplicateArtists,
+  pipeline
 }

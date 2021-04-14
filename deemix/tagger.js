@@ -111,7 +111,7 @@ function tagID3(path, track, save){
   }
 
   if (save.cover && track.album.embeddedCoverPath){
-    const coverArrayBuffer = fs.readFileSync(track.album.picturePath)
+    const coverArrayBuffer = fs.readFileSync(track.album.embeddedCoverPath)
     tag.setFrame('APIC', {
       type: 3,
       data: coverArrayBuffer,
@@ -120,7 +120,7 @@ function tagID3(path, track, save){
     })
   }
   tag.addTag()
-  
+
   fs.writeFileSync(path, Buffer.from(tag.arrayBuffer))
 }
 
