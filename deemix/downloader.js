@@ -1,5 +1,6 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { streamTrack, generateStreamURL } = require('./decryption.js')
+const { tagID3 } = require('./tagger.js')
 const { TrackFormats } = require('deezer-js')
 const { USER_AGENT_HEADER } = require('./utils/index.js')
 const { DEFAULTS } = require('./settings.js')
@@ -192,7 +193,8 @@ class Downloader {
 
     // Make sure the filepath exsists
     fs.mkdirSync(filepath, { recursive: true })
-    let writepath = `${filepath}/${filename}${extensions[track.bitrate]}`
+    let extension = extensions[track.bitrate]
+    let writepath = `${filepath}/${filename}${extension}`
 
     // Save extrasPath
     if (extrasPath && !this.extrasPath) this.extrasPath = extrasPath
@@ -212,7 +214,9 @@ class Downloader {
     await streamTrack(stream, track, 0, this.downloadObject, this.listener)
     console.log(filename)
     // Adding tags
-
+    if (extension == '.mp3'){
+      tagID3(writepath, track, this.settings.tags)
+    }
   }
 }
 
