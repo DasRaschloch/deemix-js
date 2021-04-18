@@ -71,7 +71,7 @@ class Album {
         return
       }
 
-      if (this.artists.includes(artist.name)){
+      if (this.artists.indexOf(artist.name) == -1){
         this.artists.push(artist.name)
       }
 
@@ -79,7 +79,7 @@ class Album {
         if (!this.artist[artist.role]) this.artist[artist.role] = []
         this.artist[artist.role].push(artist.name)
       }
-    });
+    })
 
     this.trackTotal = albumAPI.nb_tracks
     this.recordType = albumAPI.record_type
@@ -125,7 +125,7 @@ class Album {
     this.label = albumAPI_gw.LABEL_NAME || this.label
 
     let explicitLyricsStatus = albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS
-    this.explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].contains(explicitLyricsStatus)
+    this.explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(explicitLyricsStatus)
 
     if (this.pic.md5 == ""){
       this.pic.md5 = albumAPI_gw.ALB_PICTURE

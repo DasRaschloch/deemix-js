@@ -1,6 +1,6 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { streamTrack, generateStreamURL } = require('./decryption.js')
-const { tagID3 } = require('./tagger.js')
+const { tagID3, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath } = require('./utils/pathtemplates.js')
@@ -61,7 +61,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
   }
 
   for (let i = 0; i < Object.keys(formats).length; i++){
-    let formatNumber = Object.keys(formats)[i]
+    let formatNumber = Object.keys(formats).reverse()[i]
     let formatName = formats[formatNumber]
 
     if (formatNumber > bitrate) { continue }
@@ -241,6 +241,8 @@ class Downloader {
     // Adding tags
     if (extension == '.mp3'){
       tagID3(writepath, track, this.settings.tags)
+    } else if (extension == '.flac'){
+      tagFLAC(writepath, track, this.settings.tags)
     }
   }
 }

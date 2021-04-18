@@ -246,7 +246,7 @@ class Track {
       if (this.artists.indexOf(artist.name) == -1)
         this.artists.push(artist.name)
 
-      if (isMainArtist || !this.artsit.Main.contains(artist.name) && !isMainArtist){
+      if (isMainArtist || !this.artsit.Main.includes(artist.name) && !isMainArtist){
         if (!this.artist[artist.role])
           this.artist[artist.role] = []
         this.artist[artist.role].push(artist.name)
@@ -298,7 +298,7 @@ class Track {
       if (this.album.artists.indexOf(artist.name) == -1)
         this.album.artists.push(artist.name)
 
-      if (isMainArtist || !this.album.artsit.Main.contains(artist.name) && !isMainArtist){
+      if (isMainArtist || !this.album.artsit.Main.includes(artist.name) && !isMainArtist){
         if (!this.album.artist[artist.role])
           this.album.artist[artist.role] = []
         this.album.artist[artist.role].push(artist.name)

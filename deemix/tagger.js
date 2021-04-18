@@ -1,4 +1,5 @@
 const ID3Writer = require('browser-id3-writer')
+const Metaflac = require('metaflac-js2')
 const fs = require('fs')
 
 function tagID3(path, track, save){
@@ -83,9 +84,9 @@ function tagID3(path, track, save){
   */
 
   let involvedPeople = []
-  Object.keys(track.contributors).forEach((role) => {
+  Object.keys(track.contributors).forEach(role => {
     if (['author', 'engineer', 'mixer', 'producer', 'writer'].indexOf(role) != -1){
-      track.contributors[role].forEach((person) => {
+      track.contributors[role].forEach(person => {
         involvedPeople.push([role, person])
       })
     } else if (role === 'composer' && save.composer){
@@ -124,6 +125,98 @@ function tagID3(path, track, save){
   fs.writeFileSync(path, Buffer.from(tag.arrayBuffer))
 }
 
+function tagFLAC(path, track, save){
+  const flac = new Metaflac(path)
+  flac.removeAllTags()
+
+  if (save.title) flac.setTag(`TITLE=${track.title}`)
+
+  if (save.artist && track.artists.length){
+    if (save.multiArtistSeparator == "default"){
+      track.artists.forEach(artist => {
+        flac.setTag(`ARTIST=${artist}`)
+      })
+    }else{
+      if (save.multiArtistSeparator == "nothing"){
+        flac.setTag(`ARTIST=${track.mainArtist.name}`)
+      } else {
+        flac.setTag(`ARTIST=${track.artistString}`)
+      }
+      // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
+      // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
+      track.artists.forEach(artist => {
+        flac.setTag(`ARTISTS=${artist}`)
+      })
+    }
+  }
+
+  if (save.album) flac.setTag(`ALBUM=${track.album.title}`)
+
+  if (save.albumArtist && track.album.artists.length){
+    if (save.singleAlbumArtist && track.album.mainArtist.save){
+      flac.setTag(`ALBUMARTIST=${track.album.mainArtist.name}`)
+    } else {
+      track.album.artists.forEach(artist => {
+        flac.setTag(`ALBUMARTIST=${artist}`)
+      })
+    }
+  }
+
+  if (save.trackNumber) flac.setTag(`TRACKNUMBER=${track.trackNumber}`)
+  if (save.trackTotal) flac.setTag(`TRACKTOTAL=${track.album.trackTotal}`)
+  if (save.discNumber) flac.setTag(`DISCNUMBER=${track.discNumber}`)
+  if (save.discTotal) flac.setTag(`DISCTOTAL=${track.album.discTotal}`)
+  if (save.genre){
+    track.album.genre.forEach(genre => {
+      flac.setTag(`GENRE=${genre}`)
+    })
+  }
+
+  // YEAR tag is not suggested as a standard tag
+  // Being YEAR already contained in DATE will only use DATE instead
+  // Reference: https://www.xiph.org/vorbis/doc/v-comment.html#fieldnames
+  if (save.date) flac.setTag(`DATE=${track.dateString}`)
+  else if (save.year) flac.setTag(`DATE=${track.date.year}`)
+
+  if (save.length) flac.setTag(`LENGTH=${parseInt(track.duration)*1000}`)
+  if (save.bpm) flac.setTag(`BPM=${track.bpm}`)
+  if (save.label) flac.setTag(`PUBLISHER=${track.album.label}`)
+  if (save.isrc) flac.setTag(`ISRC=${track.ISRC}`)
+  if (save.barcode) flac.setTag(`BARCODE=${track.album.barcode}`)
+  if (save.explicit) flac.setTag(`ITUNESADVISORY=${track.explicit ? "1" : "0"}`)
+  if (save.replayGain) flac.setTag(`REPLAYGAIN_TRACK_GAIN=${track.replayGain}`)
+  if (save.lyrics && track.lyrics.unsync) flac.setTag(`LYRICS=${track.lyrics.unsync}`)
+
+  Object.keys(track.contributors).forEach(role => {
+    if (['author', 'engineer', 'mixer', 'producer', 'writer', 'composer'].indexOf(role) != -1){
+      if (save.involvedPeople && role != 'composer' || save.composer && role == 'composer')
+        track.contributors[role].forEach(person => {
+          flac.setTag(`${role.toUpperCase()}=${person}`)
+        })
+    } else if (role === 'musicpublisher' && save.involvedPeople){
+      track.contributors.musicpublisher.forEach(person => {
+        flac.setTag(`ORGANIZATION=${person}`)
+      })
+    }
+  })
+
+  if (save.copyright) flac.setTag(`COPYRIGHT=${track.copyright}`)
+  if (save.savePlaylistAsCompilation && track.playlist || track.album.recordType == "compile")
+    flac.setTag('COMPILATION=1')
+
+  if (save.source){
+    flac.setTag('SOURCE=Deezer')
+    flac.setTag(`SOURCEID=${track.id}`)
+  }
+
+  if (save.cover && track.album.embeddedCoverPath){
+    flac.importPicture(track.album.embeddedCoverPath)
+  }
+
+  flac.save()
+}
+
 module.exports = {
-  tagID3
+  tagID3,
+  tagFLAC
 }
