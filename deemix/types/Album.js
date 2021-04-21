@@ -7,8 +7,8 @@ const { Picture } = require('./Picture.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 
 class Album {
-  constructor(id = 0, title = "", pic_md5 = ""){
-    this.id = id
+  constructor(alb_id = "0", title = "", pic_md5 = ""){
+    this.id = alb_id
     this.title = title
     this.pic = new Picture(pic_md5, "cover")
     this.artist = {"Main": []}
@@ -24,6 +24,7 @@ class Album {
     this.genre = []
     this.barcode = "Unknown"
     this.label = "Unknown"
+    this.copyright = ""
     this.recordType = "album"
     this.bitrate = 0
     this.rootArtist = null
@@ -40,7 +41,7 @@ class Album {
     // Getting artist image ID
     // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
     let art_pic = albumAPI.artist.picture_small
-    art_pic = art_pic.substring( art_pic.indexOf('artist/')+7, art_pic.length-24 )
+    art_pic = art_pic.slice(art_pic.indexOf('artist/')+7, -24)
     this.mainArtist = new Artist(
       albumAPI.artist.id,
       albumAPI.artist.name,
@@ -49,7 +50,7 @@ class Album {
     )
     if (albumAPI.root_artist){
       let art_pic = albumAPI.root_artist.picture_small
-      art_pic = art_pic.substring( art_pic.indexOf('artist/')+7, art_pic.length-24 )
+      art_pic = art_pic.slice(art_pic.indexOf('artist/')+7, -24)
       this.rootArtist = new Artist(
         albumAPI.root_artist.id,
         albumAPI.root_artist.name,
@@ -71,7 +72,7 @@ class Album {
         return
       }
 
-      if (this.artists.indexOf(artist.name) == -1){
+      if (!this.artists.includes(artist.name)){
         this.artists.push(artist.name)
       }
 
@@ -89,9 +90,9 @@ class Album {
     this.explicit = Boolean(albumAPI.explicit_lyrics || false)
     if (albumAPI.release_date){
       this.date = new Date()
-      this.date.year = albumAPI.release_date.substring(0,4)
-      this.date.month = albumAPI.release_date.substring(5,7)
-      this.date.day = albumAPI.release_date.substring(8,10)
+      this.date.year = albumAPI.release_date.slice(0,4)
+      this.date.month = albumAPI.release_date.slice(5,7)
+      this.date.day = albumAPI.release_date.slice(8,10)
       this.date.fixDayMonth()
     }
 
@@ -102,7 +103,7 @@ class Album {
       // Getting album cover MD5
       // ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
       let alb_pic = albumAPI.cover_small
-      this.pic.md5 = alb_pic.substring( alb_pic.indexOf('cover/')+6, alb_pic.length-24 )
+      this.pic.md5 = alb_pic.slice( alb_pic.indexOf('cover/')+6, -24 )
     }
 
     if (albumAPI.genres && albumAPI.genres.data && albumAPI.genres.data.length > 0) {
@@ -132,9 +133,9 @@ class Album {
     }
     if (albumAPI_gw.PHYSICAL_RELEASE_DATE){
       this.date = new Date()
-      this.date.year = albumAPI_gw.PHYSICAL_RELEASE_DATE.substring(0,4)
-      this.date.month = albumAPI_gw.PHYSICAL_RELEASE_DATE.substring(5,7)
-      this.date.day = albumAPI_gw.PHYSICAL_RELEASE_DATE.substring(8,10)
+      this.date.year = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
+      this.date.month = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
+      this.date.day = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
       this.date.fixDayMonth()
     }
   }

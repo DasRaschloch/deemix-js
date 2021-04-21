@@ -40,7 +40,7 @@ function generateStreamURL(sngID, md5, mediaVersion, format){
 }
 
 function reverseStreamURL(url){
-  let urlPart = url.substring(url.find("/1/")+3)
+  let urlPart = url.slice(url.find("/1/")+3)
   return reverseStreamPath(urlPart)
 }
 

@@ -1,6 +1,6 @@
 class Lyrics {
-  constructor(id = "0") {
-    this.id = id
+  constructor(lyr_id = "0") {
+    this.id = lyr_id
     this.sync = ""
     this.unsync = ""
     this.syncID3 = []

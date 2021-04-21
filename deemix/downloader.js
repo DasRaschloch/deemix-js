@@ -24,7 +24,7 @@ const TEMPDIR = tmpdir()+`/deemix-imgs`
 fs.mkdirSync(TEMPDIR, { recursive: true })
 
 async function downloadImage(url, path, overwrite){
-  if (fs.existsSync(path) && [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].indexOf(overwrite) == -1) return path
+  if (fs.existsSync(path) && ![OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].includes(overwrite)) return path
 
   const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000})
   const fileWriterStream = fs.createWriteStream(path)
@@ -50,7 +50,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     [TrackFormats.MP4_RA1]: "MP4_RA1"
   }
 
-  const is360Format = Object.keys(formats_360).indexOf(bitrate) != -1
+  const is360Format = Object.keys(formats_360).includes(bitrate)
   let formats
   if (!shouldFallback){
     formats = {...formats_360, ...formats_non_360}
@@ -65,7 +65,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     let formatName = formats[formatNumber]
 
     if (formatNumber > bitrate) { continue }
-    if (Object.keys(track.filesizes).indexOf(`FILESIZE_${formatName}`) != -1){
+    if (Object.keys(track.filesizes).includes(`FILESIZE_${formatName}`)){
       if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
       if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
         let request

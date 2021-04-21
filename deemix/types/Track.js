@@ -150,7 +150,7 @@ class Track {
         // Getting artist image ID
         // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
         const artistAPI = await dz.api.get_artist(this.album.mainArtist.id)
-        this.album.mainArtist.pic.md5 = artistAPI.picture_small.substring( artistAPI.picture_small.search('artist/')+7, artistAPI.picture_small.length-24 )
+        this.album.mainArtist.pic.md5 = artistAPI.picture_small.slice( artistAPI.picture_small.search('artist/')+7, -24 )
       }else{
         throw new AlbumDoesntExists
       }
@@ -202,7 +202,7 @@ class Track {
 
   parseTrackGW(trackAPI_gw){
     this.title = trackAPI_gw.SNG_TITLE.trim()
-    if (trackAPI_gw.VERSION && this.title.indexOf(trackAPI_gw.VERSION.trim()) == -1){
+    if (trackAPI_gw.VERSION && !this.title.includes(trackAPI_gw.VERSION.trim())){
       this.title += ` ${trackAPI_gw.VERSION.trim()}`
     }
 
@@ -223,9 +223,9 @@ class Track {
     )
 
     if (trackAPI_gw.PHYSICAL_RELEASE_DATE){
-      const day = trackAPI_gw.PHYSICAL_RELEASE_DATE.substring(8,10)
-      const month = trackAPI_gw.PHYSICAL_RELEASE_DATE.substring(5,7)
-      const year = trackAPI_gw.PHYSICAL_RELEASE_DATE.substring(0,4)
+      const day = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
+      const month = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
+      const year = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
       this.date = Date(day, month, year)
     }
   }
@@ -243,7 +243,7 @@ class Track {
 
       if (trackAPI.contributors.length > 1 && isVariousArtists) return
 
-      if (this.artists.indexOf(artist.name) == -1)
+      if (!this.artists.includes(artist.name))
         this.artists.push(artist.name)
 
       if (isMainArtist || !this.artsit.Main.includes(artist.name) && !isMainArtist){
@@ -263,7 +263,7 @@ class Track {
   }
 
   getFeatTitle(){
-    if (this.featArtistsString && this.title.toLowerCase().indexOf("feat.") == -1){
+    if (this.featArtistsString && !this.title.toLowerCase().includes("feat.")){
       return `${this.title} (${this.featArtistsString})`
     }
     return this.title
@@ -295,7 +295,7 @@ class Track {
       let artist = this.album.variousArtists
       let isMainArtist = artist.role === "Main"
 
-      if (this.album.artists.indexOf(artist.name) == -1)
+      if (!this.album.artists.includes(artist.name))
         this.album.artists.push(artist.name)
 
       if (isMainArtist || !this.album.artsit.Main.includes(artist.name) && !isMainArtist){
@@ -320,7 +320,7 @@ class Track {
     }
 
     // Remove (Album Version) from tracks that have that
-    if (settings.removeAlbumVersion && this.title.indexOf("Album Version") != -1){
+    if (settings.removeAlbumVersion && this.title.includes("Album Version")){
       this.title = this.title.replace(/ ?\(Album Version\)/g, '').trim()
     }
 

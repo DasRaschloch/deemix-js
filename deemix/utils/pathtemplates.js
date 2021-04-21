@@ -18,7 +18,7 @@ function fixName(txt, char='_'){
 }
 
 function fixLongName(name){
-  if (name.indexOf('/') != -1){
+  if (name.includes('/')){
     let sepName = name.split('/')
     name = ""
     sepName.forEach((txt) => {
@@ -27,19 +27,19 @@ function fixLongName(name){
     })
     name = name.slice(0, -1)
   } else {
-    name = name.substring(0, 200)
+    name = name.slice(0, 200)
   }
   return name
 }
 
 function antiDot(str){
 	while(str[str.length-1] == "." || str[str.length-1] == " " || str[str.length-1] == "\n"){
-		str = str.substring(0,str.length-1);
+		str = str.slice(0,-1)
 	}
 	if(str.length < 1){
-		str = "dot";
+		str = "dot"
 	}
-	return str;
+	return str
 }
 
 function pad(num, max_val, settings) {
@@ -115,10 +115,10 @@ function generatePath(track, downloadObject, settings){
     filepath += `/CD${track.discNumber}`
 
   // Remove Subfolders from filename and add it to filepath
-  if (filename.indexOf('/') != -1){
-    let tempPath = filename.substring(0, filename.indexOf('/'))
+  if (filename.includes('/')){
+    let tempPath = filename.slice(0, filename.indexOf('/'))
     filepath += `/${tempPath}`
-    filename = filename.substring(tempPath.length+1)
+    filename = filename.slice(tempPath.length+1)
   }
 
   return {

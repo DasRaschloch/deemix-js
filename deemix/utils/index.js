@@ -12,9 +12,9 @@ function removeFeatures(title){
   let clean = title
   if (clean.search(/\(feat\./gi) != -1){
     const pos = clean.search(/\(feat\./gi)
-    let tempTrack = clean.substring(0, pos)
-    if (clean.indexOf(')') != -1)
-      tempTrack += clean.substring(clean.indexOf(')', pos+1)+1)
+    let tempTrack = clean.slice(0, pos)
+    if (clean.includes(')'))
+      tempTrack += clean.slice(clean.indexOf(')', pos+1)+1)
     clean = tempTrack.trim()
     clean = clean.replace(/\s\s+/g, ' ') // remove extra spaces
   }
@@ -40,7 +40,7 @@ function andCommaConcat(lst){
 function uniqueArray(arr){
   arr.forEach((namePrinc, iPrinc) => {
     arr.forEach((nameRest, iRest) => {
-      if (iPrinc != iRest && nameRest.toLowerCase().indexOf(namePrinc.toLowerCase()) != -1){
+      if (iPrinc != iRest && nameRest.toLowerCase().includes(namePrinc.toLowerCase())){
         arr.splice(iRest, 1)
       }
     })

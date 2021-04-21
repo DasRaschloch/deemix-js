@@ -9,61 +9,61 @@ const {
 } = require('./itemgen.js')
 
 async function parseLink(link){
-  if (link.indexOf('deezer.page.link') != -1){
+  if (link.includes('deezer.page.link')){
     link = await got.get(link) // Resolve URL shortner
     link = link.url
   }
   // Remove extra stuff
-  if (link.indexOf('?') != -1) link = link.substring(0, link.indexOf('?'))
-  if (link.indexOf('&') != -1) link = link.substring(0, link.indexOf('&'))
-  if (link.endsWith('/')) link = link.substring(0, link.length-1) // Remove last slash if present
+  if (link.includes('?')) link = link.slice(0, link.indexOf('?'))
+  if (link.includes('&')) link = link.slice(0, link.indexOf('&'))
+  if (link.endsWith('/')) link = link.slice(0, -1) // Remove last slash if present
 
-  let type, id
+  let link_type, link_id
 
-  if (link.indexOf('deezer') == -1) return [link, type, id] // return if not a deezer link
+  if (!link.includes('deezer')) return [link, link_type, link_id] // return if not a deezer link
 
   if (link.search(/\/track\/(.+)/g) != -1){
-    type = 'track'
-    id = /\/track\/(.+)/g.exec(link)[1]
+    link_type = 'track'
+    link_id = /\/track\/(.+)/g.exec(link)[1]
   }else if (link.search(/\/playlist\/(\d+)/g) != -1){
-    type = 'playlist'
-    id = /\/playlist\/(\d+)/g.exec(link)[1]
+    link_type = 'playlist'
+    link_id = /\/playlist\/(\d+)/g.exec(link)[1]
   }else if (link.search(/\/album\/(.+)/g) != -1){
-    type = 'album'
-    id = /\/album\/(.+)/g.exec(link)[1]
+    link_type = 'album'
+    link_id = /\/album\/(.+)/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)\/top_track/g) != -1){
-    type = 'artist_top'
-    id = /\/artist\/(\d+)\/top_track/g.exec(link)[1]
+    link_type = 'artist_top'
+    link_id = /\/artist\/(\d+)\/top_track/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)\/discography/g) != -1){
-    type = 'artist_discography'
-    id = /\/artist\/(\d+)\/discography/g.exec(link)[1]
+    link_type = 'artist_discography'
+    link_id = /\/artist\/(\d+)\/discography/g.exec(link)[1]
   }else if (link.search(/\/artist\/(\d+)/g) != -1){
-    type = 'artist'
-    id = /\/artist\/(\d+)/g.exec(link)[1]
+    link_type = 'artist'
+    link_id = /\/artist\/(\d+)/g.exec(link)[1]
   }
 
-  return [link, type, id]
+  return [link, link_type, link_id]
 }
 
 async function generateDownloadObject(dz, link, bitrate){
-  let type, id
-  [link, type, id] = await parseLink(link)
+  let link_type, link_id
+  [link, link_type, link_id] = await parseLink(link)
 
-  if (type == null || id == null) return null
+  if (link_type == null || link_id == null) return null
 
-  switch (type) {
+  switch (link_type) {
     case 'track':
-      return generateTrackItem(dz, id, bitrate)
+      return generateTrackItem(dz, link_id, bitrate)
     case 'album':
-      return generateAlbumItem(dz, id, bitrate)
+      return generateAlbumItem(dz, link_id, bitrate)
     case 'playlist':
-      return generatePlaylistItem(dz, id, bitrate)
+      return generatePlaylistItem(dz, link_id, bitrate)
     case 'artist':
-      return generateArtistItem(dz, id, bitrate)
+      return generateArtistItem(dz, link_id, bitrate)
     case 'artist_discography':
-      return generateArtistDiscographyItem(dz, id, bitrate)
+      return generateArtistDiscographyItem(dz, link_id, bitrate)
     case 'artist_top':
-      return generateArtistTopItem(dz, id, bitrate)
+      return generateArtistTopItem(dz, link_id, bitrate)
   }
   return null
 }

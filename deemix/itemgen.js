@@ -32,7 +32,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   }
 
   let title = trackAPI_gw.SNG_TITLE.trim()
-  if (trackAPI_gw.VERSION && title.indexOf(trackAPI_gw.VERSION.trim()) == -1){
+  if (trackAPI_gw.VERSION && !title.includes(trackAPI_gw.VERSION.trim())){
     title += ` ${trackAPI_gw.VERSION.trim()}`
   }
   const explicit = Boolean(parseInt(trackAPI_gw.EXPLICIT_LYRICS || "0"))
@@ -81,7 +81,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
 
   let cover
   if (albumAPI.cover_small){
-    cover = albumAPI.cover_small.substring(0, albumAPI.cover_small.length-24) + '/75x75-000000-80-0-0.jpg'
+    cover = albumAPI.cover_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg'
   }else{
     cover = `https://e-cdns-images.dzcdn.net/images/cover/${albumAPI_gw.ALB_PICTURE}/75x75-000000-80-0-0.jpg`
   }
@@ -161,7 +161,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
     bitrate: bitrate,
     title: playlistAPI.title,
     artist: playlistAPI.creator.name,
-    cover: playlistAPI.cover_small.substring(0, playlistAPI.cover_small.length-24) + '/75x75-000000-80-0-0.jpg',
+    cover: playlistAPI.cover_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg',
     explicit: playlistAPI.explicit,
     size: totalSize,
     collection: {

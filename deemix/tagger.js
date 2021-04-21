@@ -85,7 +85,7 @@ function tagID3(path, track, save){
 
   let involvedPeople = []
   Object.keys(track.contributors).forEach(role => {
-    if (['author', 'engineer', 'mixer', 'producer', 'writer'].indexOf(role) != -1){
+    if (['author', 'engineer', 'mixer', 'producer', 'writer'].includes(role)){
       track.contributors[role].forEach(person => {
         involvedPeople.push([role, person])
       })
@@ -188,7 +188,7 @@ function tagFLAC(path, track, save){
   if (save.lyrics && track.lyrics.unsync) flac.setTag(`LYRICS=${track.lyrics.unsync}`)
 
   Object.keys(track.contributors).forEach(role => {
-    if (['author', 'engineer', 'mixer', 'producer', 'writer', 'composer'].indexOf(role) != -1){
+    if (['author', 'engineer', 'mixer', 'producer', 'writer', 'composer'].includes(role)){
       if (save.involvedPeople && role != 'composer' || save.composer && role == 'composer')
         track.contributors[role].forEach(person => {
           flac.setTag(`${role.toUpperCase()}=${person}`)

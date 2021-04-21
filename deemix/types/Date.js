@@ -8,9 +8,9 @@ class Date {
 
   fixDayMonth(){
     if (parseInt(this.month) > 12){
-      let temp = this.month
+      let monthTemp = this.month
       this.month = this.day
-      this.day = temp
+      this.day = monthTemp
     }
   }
 
