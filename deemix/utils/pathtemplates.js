@@ -191,7 +191,7 @@ function generateAlbumName(foldername, album, settings, playlist){
   }
   foldername = foldername.replaceAll("%tracktotal%", album.trackTotal)
   foldername = foldername.replaceAll("%disctotal%", album.discTotal)
-  foldername = foldername.replaceAll("%type%", fixName(album.recordType.capitalize(), c))
+  foldername = foldername.replaceAll("%type%", fixName(album.recordType.charAt(0).toUpperCase() + album.recordType.slice(1), c))
   foldername = foldername.replaceAll("%upc%", album.barcode)
   foldername = foldername.replaceAll("%explicit%", album.explicit ? "(Explicit)" : "")
   foldername = foldername.replaceAll("%label%", fixName(album.label, c))

@@ -11,7 +11,7 @@
   "dependencies": {
     "browser-id3-writer": "^4.4.0",
     "crypto": "^1.0.1",
-    "deezer-js": "^0.0.3",
+    "deezer-js": "^0.0.8",
     "got": "^11.8.2",
     "metaflac-js2": "^1.0.7"
   },

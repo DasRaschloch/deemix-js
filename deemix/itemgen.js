@@ -63,7 +63,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     throw new GenerationError(e)
   }
 
-  if (id.startswith('upc')) { id = albumAPI['id'] }
+  if (id.startsWith('upc')) { id = albumAPI['id'] }
 
   // Get extra info about album
   // This saves extra api calls when downloading
@@ -161,7 +161,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
     bitrate: bitrate,
     title: playlistAPI.title,
     artist: playlistAPI.creator.name,
-    cover: playlistAPI.cover_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg',
+    cover: playlistAPI.picture_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg',
     explicit: playlistAPI.explicit,
     size: totalSize,
     collection: {

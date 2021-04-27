@@ -18,7 +18,7 @@ class Playlist {
     let year = playlistAPI.creation_date.slice(0,4)
     let month = playlistAPI.creation_date.slice(5,7)
     let day = playlistAPI.creation_date.slice(8,10)
-    this.date = Date(day, month, year)
+    this.date = new Date(day, month, year)
 
     this.discTotal = "1"
     this.playlistID = playlistAPI.id
@@ -29,15 +29,15 @@ class Playlist {
       let picType = url.slice(url.indexOf('images/')+7)
       picType = picType.slice(0, picType.indexOf('/'))
       let md5 = url.slice( url.indexOf(picType+'/') + picType.length+1, -24 )
-      this.pic = Picture(md5, picType)
+      this.pic = new Picture(md5, picType)
     } else {
-      this.pic = StaticPicture(playlistAPI.picture_xl)
+      this.pic = new StaticPicture(playlistAPI.picture_xl)
     }
 
     if (playlistAPI.various_artist) {
       let pic_md5 = playlistAPI.various_artist.picture_small
       pic_md5 = pic_md5.slice( pic_md5.indexOf('artist/')+7, -24 )
-      this.variousArtists = Artist(
+      this.variousArtists = new Artist(
         playlistAPI.various_artist.id,
         playlistAPI.various_artist.name,
         playlistAPI.various_artist.role,

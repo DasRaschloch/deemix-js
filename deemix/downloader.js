@@ -134,13 +134,14 @@ class Downloader {
       })
     } else if (this.downloadObject.__type__ === "Collection") {
       let tracks = []
-      this.downloadObject.collection.tracks_gw.forEach(async (track, pos) => {
+      for (let pos = 0; pos < this.downloadObject.collection.tracks_gw.length; pos++){
+        let track = this.downloadObject.collection.tracks_gw[pos]
         tracks[pos] = await this.download({
           trackAPI_gw: track,
           albumAPI: this.downloadObject.collection.albumAPI,
           playlistAPI: this.downloadObject.collection.playlistAPI
         })
-      })
+      }
     }
 
     if (this.listener) this.listener.send("finishedDownload", this.downloadObject.uuid)
@@ -160,6 +161,7 @@ class Downloader {
           trackAPI_gw.SNG_ID,
           trackAPI_gw,
           trackAPI,
+          null, // albumAPI_gw
           albumAPI,
           playlistAPI
         )
