@@ -1,5 +1,6 @@
 const { TrackFormats } = require('deezer-js')
-const { getMusicFolder } = require('./utils/localpaths.js')
+const { getMusicFolder, getConfigFolder } = require('./utils/localpaths.js')
+const fs = require('fs')
 
 // Should the lib overwrite files?
 const OverwriteOption = {
@@ -99,8 +100,66 @@ const DEFAULTS = {
   }
 }
 
+function save(settings, configFolder){
+  configFolder = configFolder || getConfigFolder()
+  if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
+
+  fs.writeFileSync(configFolder+'config.json', JSON.stringify(settings))
+}
+
+function load(configFolder){
+  configFolder = configFolder || getConfigFolder()
+  if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
+
+  if (! fs.existsSync(configFolder+'config.json')) save(DEFAULTS, configFolder)
+
+  let settings = JSON.parse(fs.readFileSync(configFolder+'config.json'))
+  if (check(settings) > 0) save(settings, configFolder)
+  return settings
+}
+
+function check(settings){
+  let changes = 0
+  Object.keys(DEFAULTS).forEach( _iSet => {
+    if (! settings[_iSet] || typeof settings[_iSet] != DEFAULTS[_iSet]){
+      settings[_iSet] = DEFAULTS[_iSet]
+      changes++
+    }
+  })
+  Object.keys(DEFAULTS.tags).forEach( _iSet => {
+    if (! settings.tags[_iSet] || typeof settings.tags[_iSet] != DEFAULTS.tags[_iSet]){
+      settings.tags[_iSet] = DEFAULTS.tags[_iSet]
+      changes++
+    }
+  })
+  if (settings.downloadLocation == ""){
+    settings.downloadLocation = DEFAULTS.downloadLocation
+    changes++
+  }
+  [
+    'tracknameTemplate',
+    'albumTracknameTemplate',
+    'playlistTracknameTemplate',
+    'playlistNameTemplate',
+    'artistNameTemplate',
+    'albumNameTemplate',
+    'playlistFilenameTemplate',
+    'coverImageTemplate',
+    'artistImageTemplate',
+    'paddingSize'
+  ].forEach(template => {
+    if (settings[template] == ""){
+      settings[template] = DEFAULTS[template]
+      changes++
+    }
+  })
+  return changes
+}
+
 module.exports = {
   OverwriteOption,
   FeaturesOption,
-  DEFAULTS
+  DEFAULTS,
+  save,
+  load
 }
