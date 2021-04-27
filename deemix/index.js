@@ -72,6 +72,7 @@ module.exports = {
   parseLink,
   generateDownloadObject,
   types: {
+    ...require('./types/index.js'),
     ...require('./types/Album.js'),
     ...require('./types/Artist.js'),
     ...require('./types/Date.js'),
@@ -79,6 +80,23 @@ module.exports = {
     ...require('./types/Picture.js'),
     ...require('./types/Playlist.js'),
     ...require('./types/Track.js'),
+    downloadObjects: require('./types/DownloadObjects.js')
   },
-  downloader: require('./downloader.js')
+  itemgen: {
+    generateTrackItem,
+    generateAlbumItem,
+    generatePlaylistItem,
+    generateArtistItem,
+    generateArtistDiscographyItem,
+    generateArtistTopItem
+  },
+  settings: require('./settings.js'),
+  downloader: require('./downloader.js'),
+  decryption: require('./decryption.js'),
+  tagger: require('./tagger.js'),
+  utils: {
+    ...require('./utils/index.js'),
+    localpaths: require('./utils/localpaths.js'),
+    pathtemplates: require('./utils/pathtemplates.js')
+  }
 }
