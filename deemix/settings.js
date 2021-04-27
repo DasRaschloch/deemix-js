@@ -1,4 +1,5 @@
 const { TrackFormats } = require('deezer-js')
+const { getMusicFolder } = require('./utils/localpaths.js')
 
 // Should the lib overwrite files?
 const OverwriteOption = {
@@ -18,7 +19,7 @@ const FeaturesOption = {
 }
 
 const DEFAULTS = {
-  downloadLocation: "",
+  downloadLocation: getMusicFolder(),
   tracknameTemplate: "%artist% - %title%",
   albumTracknameTemplate: "%tracknumber% - %title%",
   playlistTracknameTemplate: "%position% - %artist% - %title%",
