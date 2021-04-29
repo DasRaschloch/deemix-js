@@ -127,7 +127,7 @@ class Downloader {
 
   async start(){
     if (this.downloadObject.__type__ === "Single"){
-      await this.download({
+      await this.downloadWrapper({
         trackAPI_gw: this.downloadObject.single.trackAPI_gw,
         trackAPI: this.downloadObject.single.trackAPI,
         albumAPI: this.downloadObject.single.albumAPI
@@ -136,7 +136,7 @@ class Downloader {
       let tracks = []
       for (let pos = 0; pos < this.downloadObject.collection.tracks_gw.length; pos++){
         let track = this.downloadObject.collection.tracks_gw[pos]
-        tracks[pos] = await this.download({
+        tracks[pos] = await this.downloadWrapper({
           trackAPI_gw: track,
           albumAPI: this.downloadObject.collection.albumAPI,
           playlistAPI: this.downloadObject.collection.playlistAPI
@@ -151,10 +151,12 @@ class Downloader {
     const { trackAPI_gw, trackAPI, albumAPI, playlistAPI } = extraData
     if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
 
+    let itemName = `[${trackAPI_gw.ART_NAME} - ${trackAPI_gw.SNG_TITLE.trim()}]`
+
     // Generate track object
     if (!track){
       track = new Track()
-      console.log("Getting tags")
+      console.log(`${itemName} Getting tags`)
       try{
         await track.parseData(
           this.dz,
@@ -166,18 +168,19 @@ class Downloader {
           playlistAPI
         )
       } catch (e){
-        if (e instanceof AlbumDoesntExists) { throw new DownloadError('albumDoesntExists') }
+        if (e instanceof AlbumDoesntExists) { throw new DownloadFailed('albumDoesntExists') }
         console.error(e)
         throw e
       }
-
     }
+
+    itemName = `[${track.mainArtist.name} - ${track.title}]`
 
     // Check if the track is encoded
     if (track.MD5 === "") throw new DownloadFailed("notEncoded", track)
 
     // Check the target bitrate
-    console.log("Getting bitrate")
+    console.log(`${itemName} Getting bitrate`)
     let selectedFormat
     try{
       selectedFormat = await getPreferredBitrate(
@@ -226,7 +229,7 @@ class Downloader {
 
     // Download and cache the coverart
     track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
-    console.log("Albumart downloaded")
+    console.log(`${itemName} Albumart downloaded`)
 
     // Save local album art
     // Save artist art
@@ -235,45 +238,152 @@ class Downloader {
     // Check for overwrite settings
 
     // Download the track
-    console.log("Downloading")
+    console.log(`${itemName} Downloading`)
     track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
     let stream = fs.createWriteStream(writepath)
-    await streamTrack(stream, track, 0, this.downloadObject, this.listener)
-    console.log(filename)
+    try {
+      await streamTrack(stream, track, 0, this.downloadObject, this.listener)
+    } catch (e){
+      fs.unlinkSync(writepath)
+      if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
+      throw e
+    }
+
+
+    console.log(`${itemName} Tagging file`)
     // Adding tags
     if (extension == '.mp3'){
       tagID3(writepath, track, this.settings.tags)
     } else if (extension == '.flac'){
       tagFLAC(writepath, track, this.settings.tags)
     }
+
+    return {}
+  }
+
+  async downloadWrapper(extraData, track){
+    const { trackAPI_gw } = extraData
+    // Temp metadata to generate logs
+    let tempTrack = {
+      id: trackAPI_gw.SNG_ID,
+      title: trackAPI_gw.SNG_TITLE.trim(),
+      artist: trackAPI_gw.ART_NAME
+    }
+    if (trackAPI_gw.VERSION && trackAPI_gw.SNG_TITLE.includes(trackAPI_gw.VERSION))
+      tempTrack.title += ` ${trackAPI_gw.VERSION.trim()}`
+
+    let itemName = `[${tempTrack.artist} - ${tempTrack.title}]`
+    let result
+    try {
+      result = await this.download(extraData, track)
+    } catch (e){
+      if (e instanceof DownloadFailed){
+        if (e.track){
+          let track = e.track
+          if (track.fallbackID != 0){
+            console.warn(`${itemName} ${e.message} Using fallback id.`)
+            let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
+            track.parseEssentialData(newTrack)
+            track.retriveFilesizes(this.dz)
+            return await this.downloadWrapper(extraData, track)
+          }
+          if (!track.searched && this.settings.fallbackSearch){
+            console.warn(`${itemName} ${e.message} Searching for alternative.`)
+            let searchedID = this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
+            if (searchedID != "0"){
+              let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
+              track.parseEssentialData(newTrack)
+              track.retriveFilesizes(this.dz)
+              track.searched = true
+              if (this.listener) this.listener.send('queueUpdate', {
+                uuid: this.downloadObject.uuid,
+                searchFallback: true,
+                data: {
+                  id: track.id,
+                  title: track.title,
+                  artist: track.mainArtist.name
+                }
+              })
+              return await this.downloadWrapper(extraData, track)
+            }
+          }
+          e.errid += "NoAlternative"
+          e.message = errorMessages[e.errid]
+        }
+        console.error(`${itemName} ${e.message}`)
+        result = {error:{
+          message: e.message,
+          errid: e.errid,
+          data: tempTrack
+        }}
+      } else {
+        console.error(`${itemName} ${e.message}`)
+        result = {error:{
+          message: e.message,
+          data: tempTrack
+        }}
+      }
+    }
+
+    if (result.error){
+      this.downloadObject.completeTrackProgress(this.interface)
+      this.downloadObject.failed += 1
+      this.downloadObject.errors.push(result.error)
+      if (this.interface){
+        let error = result.error
+        this.interface.send("updateQueue", {
+          uuid: this.downloadObject.uuid,
+          failed: true,
+          data: error.data,
+          error: error.message,
+          errid: error.errid || null
+        })
+      }
+    }
+    return result
   }
 }
 
 class DownloadError extends Error {
-  constructor(message) {
-    super(message);
+  constructor() {
+    super()
     this.name = "DownloadError"
   }
 }
 
+const errorMessages = {
+    notOnDeezer: "Track not available on Deezer!",
+    notEncoded: "Track not yet encoded!",
+    notEncodedNoAlternative: "Track not yet encoded and no alternative found!",
+    wrongBitrate: "Track not found at desired bitrate.",
+    wrongBitrateNoAlternative: "Track not found at desired bitrate and no alternative found!",
+    no360RA: "Track is not available in Reality Audio 360.",
+    notAvailable: "Track not available on deezer's servers!",
+    notAvailableNoAlternative: "Track not available on deezer's servers and no alternative found!",
+    noSpaceLeft: "No space left on target drive, clean up some space for the tracks.",
+    albumDoesntExists: "Track's album does not exsist, failed to gather info."
+}
+
 class DownloadFailed extends DownloadError {
   constructor(errid, track) {
-    super(errid);
-    this.name = "ISRCnotOnDeezer"
+    super()
+    this.errid = errid
+    this.message = errorMessages[errid]
+    this.name = "DownloadFailed"
     this.track = track
   }
 }
 
 class TrackNot360 extends Error {
-  constructor(message) {
-    super(message);
+  constructor() {
+    super()
     this.name = "TrackNot360"
   }
 }
 
 class PreferredBitrateNotFound extends Error {
-  constructor(message) {
-    super(message);
+  constructor() {
+    super()
     this.name = "PreferredBitrateNotFound"
   }
 }

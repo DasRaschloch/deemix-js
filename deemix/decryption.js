@@ -49,6 +49,8 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   let chunkLength = start
   let complete = 0
 
+  let itemName = `[${track.mainArtist.name} - ${track.title}]`
+
   let response = got.stream(track.downloadURL, {
     headers: headers,
     retry: 3
@@ -57,9 +59,9 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     if (complete == 0) throw new DownloadEmpty
     if (start != 0){
       let responseRange = response.headers["content-range"]
-      console.log(`downloading range ${responseRange}`)
+      console.log(`${itemName} downloading range ${responseRange}`)
     }else {
-      console.log(`downloading ${complete} bytes`)
+      console.log(`${itemName} downloading ${complete} bytes`)
     }
   }).on("readable", ()=>{
     let chunk;
@@ -78,12 +80,15 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
         downloadObject.updateProgress(listener)
       }
     }
-  }).on("error", (error)=>{
-    console.error(error)
-    streamTrack(outputStream, track, chunkLength, downloadObject, listener)
   })
 
-  await pipeline(response, outputStream)
+  try {
+    await pipeline(response, outputStream)
+  } catch (e){
+    if (e instanceof got.ReadError || e instanceof got.TimeoutError)
+      await streamTrack(outputStream, track, chunkLength, downloadObject, listener)
+    else throw e
+  }
 }
 
 class DownloadEmpty extends Error {

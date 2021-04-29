@@ -246,7 +246,7 @@ class Track {
       if (!this.artists.includes(artist.name))
         this.artists.push(artist.name)
 
-      if (isMainArtist || !this.artsit.Main.includes(artist.name) && !isMainArtist){
+      if (isMainArtist || !this.artist.Main.includes(artist.name) && !isMainArtist){
         if (!this.artist[artist.role])
           this.artist[artist.role] = []
         this.artist[artist.role].push(artist.name)
@@ -298,7 +298,7 @@ class Track {
       if (!this.album.artists.includes(artist.name))
         this.album.artists.push(artist.name)
 
-      if (isMainArtist || !this.album.artsit.Main.includes(artist.name) && !isMainArtist){
+      if (isMainArtist || !this.album.artist.Main.includes(artist.name) && !isMainArtist){
         if (!this.album.artist[artist.role])
           this.album.artist[artist.role] = []
         this.album.artist[artist.role].push(artist.name)
@@ -347,15 +347,15 @@ class Track {
         this.artistString = this.artists.join(", ")
       }
     } else if (settings.tags.multiArtistSeparator == "andFeat"){
-      this.artsitsString = this.mainArtistsString
+      this.artistsString = this.mainArtistsString
       if (this.featArtistsString && settings.featuredToTitle != FeaturesOption.MOVE_TITLE)
         this.artistsString += ` ${this.featArtistsString}`
     } else {
       let separator = settings.tags.multiArtistSeparator
       if (settings.featuredToTitle == FeaturesOption.MOVE_TITLE){
-        this.artsitsString = this.artsit.Main.join(separator)
+        this.artistsString = this.artist.Main.join(separator)
       } else {
-        this.artsitsString = this.artists.join(separator)
+        this.artistsString = this.artists.join(separator)
       }
     }
   }
