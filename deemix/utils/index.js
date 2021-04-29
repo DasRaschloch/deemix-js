@@ -18,6 +18,19 @@ function generateReplayGainString(trackGain){
   return `${Math.round((parseFloat(trackGain) + 18.4)*-100)/100} dB`
 }
 
+function changeCase(txt, type){
+  switch (type) {
+    case 'lower': return txt.toLowerCase()
+    case 'upper': return txt.toUpperCase()
+    case 'start':
+      txt = txt.split(" ")
+      for (let i = 0; i < txt.length; i++) txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
+      return txt.join(" ")
+    case 'sentence': return txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase()
+    default: return txt
+  }
+}
+
 function removeFeatures(title){
   let clean = title
   if (clean.search(/\(feat\./gi) != -1){
@@ -74,5 +87,6 @@ module.exports = {
   uniqueArray,
   removeDuplicateArtists,
   pipeline,
-  canWrite
+  canWrite,
+  changeCase
 }
