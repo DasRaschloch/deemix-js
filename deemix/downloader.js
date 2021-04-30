@@ -8,6 +8,7 @@ const { TrackFormats } = require('deezer-js')
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
+const { queue } = require('async')
 
 const extensions = {
   [TrackFormats.FLAC]:    '.flac',
@@ -134,14 +135,19 @@ class Downloader {
       })
     } else if (this.downloadObject.__type__ === "Collection") {
       let tracks = []
-      for (let pos = 0; pos < this.downloadObject.collection.tracks_gw.length; pos++){
-        let track = this.downloadObject.collection.tracks_gw[pos]
+      let q = queue(async (data) => {
+        let {track, pos} = data
         tracks[pos] = await this.downloadWrapper({
           trackAPI_gw: track,
           albumAPI: this.downloadObject.collection.albumAPI,
           playlistAPI: this.downloadObject.collection.playlistAPI
         })
+      }, this.settings.queueConcurrency)
+      for (let pos = 0; pos < this.downloadObject.collection.tracks_gw.length; pos++){
+        let track = this.downloadObject.collection.tracks_gw[pos]
+        q.push({track, pos})
       }
+      await q.drain()
     }
 
     if (this.listener) this.listener.send("finishedDownload", this.downloadObject.uuid)
