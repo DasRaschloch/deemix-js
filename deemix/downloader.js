@@ -135,6 +135,7 @@ class Downloader {
       })
     } else if (this.downloadObject.__type__ === "Collection") {
       let tracks = []
+
       let q = queue(async (data) => {
         let {track, pos} = data
         tracks[pos] = await this.downloadWrapper({
@@ -143,10 +144,11 @@ class Downloader {
           playlistAPI: this.downloadObject.collection.playlistAPI
         })
       }, this.settings.queueConcurrency)
-      for (let pos = 0; pos < this.downloadObject.collection.tracks_gw.length; pos++){
-        let track = this.downloadObject.collection.tracks_gw[pos]
+
+      this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
         q.push({track, pos})
-      }
+      })
+      
       await q.drain()
     }
 
