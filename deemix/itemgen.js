@@ -7,7 +7,7 @@ const { map_user_playlist } = require('deezer-js').utils
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   // Check if is an isrc: url
-  if (id.startsWith("isrc")){
+  if (String(id).startsWith("isrc")){
     try {
       trackAPI = await dz.api.get_track(id)
     } catch (e){
@@ -63,7 +63,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     throw new GenerationError(e)
   }
 
-  if (id.startsWith('upc')) { id = albumAPI['id'] }
+  if (String(id).startsWith('upc')) { id = albumAPI['id'] }
 
   // Get extra info about album
   // This saves extra api calls when downloading
@@ -188,12 +188,12 @@ async function generateArtistItem(dz, id, bitrate, listener){
   if (listener) { listener.send("startAddingArtist", rootArtist) }
 
   const artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
-  const allReleases = artistDiscographyAPI.pop('all', [])
+  const allReleases = artistDiscographyAPI.all || []
   let albumList = []
   allReleases.forEach(async (album) => {
     try{
       let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
-      albumList.append(albumData)
+      albumList.push(albumData)
     }catch (e){
       console.warn(album.id, "No Data", e)
     }
@@ -220,13 +220,13 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
   if (listener) { listener.send("startAddingArtist", rootArtist) }
 
   let artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
-  artistDiscographyAPI.pop('all', null)
+  delete artistDiscographyAPI.all
   let albumList = []
   artistDiscographyAPI.forEach((type) => {
     type.forEach(async (album) => {
       try{
         let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
-        albumList.append(albumData)
+        albumList.push(albumData)
       }catch (e){
         console.warn(album.id, "No Data", e)
       }

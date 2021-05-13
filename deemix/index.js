@@ -45,7 +45,7 @@ async function parseLink(link){
   return [link, link_type, link_id]
 }
 
-async function generateDownloadObject(dz, link, bitrate){
+async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
   let link_type, link_id
   [link, link_type, link_id] = await parseLink(link)
 
@@ -59,9 +59,9 @@ async function generateDownloadObject(dz, link, bitrate){
     case 'playlist':
       return generatePlaylistItem(dz, link_id, bitrate)
     case 'artist':
-      return generateArtistItem(dz, link_id, bitrate)
+      return generateArtistItem(dz, link_id, bitrate, listener)
     case 'artist_discography':
-      return generateArtistDiscographyItem(dz, link_id, bitrate)
+      return generateArtistDiscographyItem(dz, link_id, bitrate, listener)
     case 'artist_top':
       return generateArtistTopItem(dz, link_id, bitrate)
   }

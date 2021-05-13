@@ -50,7 +50,7 @@ class IDownloadObject{
 
   getSlimmedDict(){
     let light = this.toDict()
-    let propertiesToDelete = ['single', 'collection', 'convertable']
+    let propertiesToDelete = ['single', 'collection', 'plugin', 'conversion_data']
     propertiesToDelete.forEach((property) => {
       if (Object.keys(light).includes(property)){
         delete light[property]
