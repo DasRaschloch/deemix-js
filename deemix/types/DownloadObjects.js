@@ -68,7 +68,8 @@ class IDownloadObject{
       title: this.title,
       artist: this.artist,
       cover: this.cover,
-      explicit: this.explicit
+      explicit: this.explicit,
+      size: this.size
     }
   }
 
