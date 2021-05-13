@@ -4,6 +4,7 @@ const {
 } = require('./types/DownloadObjects.js')
 const { LyricsStatus } = require('deezer-js').gw
 const { map_user_playlist } = require('deezer-js').utils
+const { each } = require('async')
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   // Check if is an isrc: url
@@ -183,14 +184,15 @@ async function generateArtistItem(dz, id, bitrate, listener){
 
   const rootArtist = {
       id: artistAPI.id,
-      name: artistAPI.name
+      name: artistAPI.name,
+      picture_small: artistAPI.picture_small
   }
   if (listener) { listener.send("startAddingArtist", rootArtist) }
 
   const artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
   const allReleases = artistDiscographyAPI.all || []
   let albumList = []
-  allReleases.forEach(async (album) => {
+  await each(allReleases, async (album) =>{
     try{
       let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
       albumList.push(albumData)
@@ -215,15 +217,16 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
 
   const rootArtist = {
       id: artistAPI.id,
-      name: artistAPI.name
+      name: artistAPI.name,
+      picture_small: artistAPI.picture_small
   }
   if (listener) { listener.send("startAddingArtist", rootArtist) }
 
   let artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
   delete artistDiscographyAPI.all
   let albumList = []
-  artistDiscographyAPI.forEach((type) => {
-    type.forEach(async (album) => {
+  await each(artistDiscographyAPI, async(type) => {
+    await each(type, async (album) =>{
       try{
         let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
         albumList.push(albumData)
