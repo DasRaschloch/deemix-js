@@ -59,6 +59,19 @@ class IDownloadObject{
     return light
   }
 
+  getEssentialDict(){
+    return {
+      type: this.type,
+      id: this.id,
+      bitrate: this.bitrate,
+      uuid: this.uuid,
+      title: this.title,
+      artist: this.artist,
+      cover: this.cover,
+      explicit: this.explicit
+    }
+  }
+
   updateProgress(listener){
     if (Math.round(this.progressNext) != this.progress && Math.round(this.progressNext) % 2 == 0){
       this.progress = Math.round(this.progressNext)
