@@ -148,11 +148,11 @@ class Downloader {
       this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
         q.push({track, pos})
       })
-      
+
       await q.drain()
     }
 
-    if (this.listener) this.listener.send("finishedDownload", this.downloadObject.uuid)
+    if (this.listener) this.listener.send("finishDownload", this.downloadObject.uuid)
   }
 
   async download(extraData, track){
@@ -265,6 +265,15 @@ class Downloader {
     } else if (extension == '.flac'){
       tagFLAC(writepath, track, this.settings.tags)
     }
+    this.downloadObject.downloadObject += 1
+    this.downloadObject.files.push(String(writepath))
+    if (this.listener)
+      this.listener.send('updateQueue', {
+        uuid: this.downloadObject.uuid,
+        downloaded: true,
+        downloadPath: String(writepath),
+        extrasPath: String(this.extrasPath)
+      })
 
     return {}
   }

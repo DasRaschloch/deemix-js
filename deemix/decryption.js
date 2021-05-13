@@ -63,22 +63,19 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     }else {
       console.log(`${itemName} downloading ${complete} bytes`)
     }
-  }).on("readable", ()=>{
-    let chunk;
-    while ((chunk = response.read(2048 * 3))){
-      chunkLength += chunk.length
+  }).on('data', function(chunk){
+    chunkLength += chunk.length
 
-      if (downloadObject){
-        let chunkProgres
-        if (downloadObject.__type__ === "Single"){
-          chunkProgres = (chunkLength / (complete + start)) * 100
-          downloadObject.progressNext = chunkProgres
-        }else{
-          chunkProgres = (chunk.length / (complete + start)) / downloadObject.size * 100
-          downloadObject.progressNext += chunkProgres
-        }
-        downloadObject.updateProgress(listener)
+    if (downloadObject){
+      let chunkProgres
+      if (downloadObject.__type__ === "Single"){
+        chunkProgres = (chunkLength / (complete + start)) * 100
+        downloadObject.progressNext = chunkProgres
+      }else{
+        chunkProgres = (chunk.length / (complete + start)) / downloadObject.size * 100
+        downloadObject.progressNext += chunkProgres
       }
+      downloadObject.updateProgress(listener)
     }
   })
 

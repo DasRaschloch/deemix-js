@@ -75,7 +75,7 @@ class IDownloadObject{
   updateProgress(listener){
     if (Math.round(this.progressNext) != this.progress && Math.round(this.progressNext) % 2 == 0){
       this.progress = Math.round(this.progressNext)
-      if (listener) listener.emit('updateQueue', {uuid: this.uuid, progress: this.progress})
+      if (listener) listener.send('updateQueue', {uuid: this.uuid, progress: this.progress})
     }
   }
 
