@@ -97,6 +97,7 @@ module.exports = {
   utils: {
     ...require('./utils/index.js'),
     localpaths: require('./utils/localpaths.js'),
-    pathtemplates: require('./utils/pathtemplates.js')
+    pathtemplates: require('./utils/pathtemplates.js'),
+    deezer: require('./utils/deezer.js')
   }
 }
