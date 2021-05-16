@@ -1,5 +1,5 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
-const { streamTrack, generateStreamURL } = require('./decryption.js')
+const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
 const { tagID3, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
@@ -127,36 +127,46 @@ class Downloader {
   }
 
   async start(){
-    if (this.downloadObject.__type__ === "Single"){
-      await this.downloadWrapper({
-        trackAPI_gw: this.downloadObject.single.trackAPI_gw,
-        trackAPI: this.downloadObject.single.trackAPI,
-        albumAPI: this.downloadObject.single.albumAPI
-      })
-    } else if (this.downloadObject.__type__ === "Collection") {
-      let tracks = []
-
-      let q = queue(async (data) => {
-        let {track, pos} = data
-        tracks[pos] = await this.downloadWrapper({
-          trackAPI_gw: track,
-          albumAPI: this.downloadObject.collection.albumAPI,
-          playlistAPI: this.downloadObject.collection.playlistAPI
+    if (!this.downloadObject.isCanceled){
+      if (this.downloadObject.__type__ === "Single"){
+        await this.downloadWrapper({
+          trackAPI_gw: this.downloadObject.single.trackAPI_gw,
+          trackAPI: this.downloadObject.single.trackAPI,
+          albumAPI: this.downloadObject.single.albumAPI
         })
-      }, this.settings.queueConcurrency)
+      } else if (this.downloadObject.__type__ === "Collection") {
+        let tracks = []
 
-      this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
-        q.push({track, pos})
-      })
+        let q = queue(async (data) => {
+          let {track, pos} = data
+          tracks[pos] = await this.downloadWrapper({
+            trackAPI_gw: track,
+            albumAPI: this.downloadObject.collection.albumAPI,
+            playlistAPI: this.downloadObject.collection.playlistAPI
+          })
+        }, this.settings.queueConcurrency)
 
-      await q.drain()
+        this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
+          q.push({track, pos})
+        })
+
+        await q.drain()
+      }
     }
 
-    if (this.listener) this.listener.send("finishDownload", this.downloadObject.uuid)
+    if (this.listener){
+      if (this.downloadObject.isCanceled){
+        this.listener.send('currentItemCancelled', this.downloadObject.uuid)
+        this.listener.send("removedFromQueue", this.downloadObject.uuid)
+      } else {
+        this.listener.send("finishDownload", this.downloadObject.uuid)
+      }
+    }
   }
 
   async download(extraData, track){
     const { trackAPI_gw, trackAPI, albumAPI, playlistAPI } = extraData
+    if (this.downloadObject.isCanceled) throw new DownloadCanceled
     if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
 
     let itemName = `[${trackAPI_gw.ART_NAME} - ${trackAPI_gw.SNG_TITLE.trim()}]`
@@ -181,6 +191,7 @@ class Downloader {
         throw e
       }
     }
+    if (this.downloadObject.isCanceled) throw new DownloadCanceled
 
     itemName = `[${track.mainArtist.name} - ${track.title}]`
 
@@ -217,6 +228,7 @@ class Downloader {
       coverPath,
       extrasPath
     } = generatePath(track, this.downloadObject, this.settings)
+    if (this.downloadObject.isCanceled) throw new DownloadCanceled
 
     // Make sure the filepath exsists
     fs.mkdirSync(filepath, { recursive: true })
@@ -333,7 +345,7 @@ class Downloader {
           errid: e.errid,
           data: tempTrack
         }}
-      } else {
+      } else if (! (e instanceof DownloadCanceled)){
         console.error(`${itemName} ${e.message}`)
         result = {error:{
           message: e.message,

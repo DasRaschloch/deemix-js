@@ -45,18 +45,23 @@ function reverseStreamURL(url){
 }
 
 async function streamTrack(outputStream, track, start=0, downloadObject, listener){
+  if (downloadObject.isCanceled) throw new DownloadCanceled
   let headers = {'User-Agent': USER_AGENT_HEADER}
   let chunkLength = start
   let complete = 0
 
   let itemName = `[${track.mainArtist.name} - ${track.title}]`
+  let error = ''
 
-  let response = got.stream(track.downloadURL, {
+  let request = got.stream(track.downloadURL, {
     headers: headers,
     retry: 3
   }).on('response', (response)=>{
     complete = parseInt(response.headers["content-length"])
-    if (complete == 0) throw new DownloadEmpty
+    if (complete == 0) {
+      error = "DownloadEmpty"
+      request.destroy()
+    }
     if (start != 0){
       let responseRange = response.headers["content-range"]
       console.log(`${itemName} downloading range ${responseRange}`)
@@ -64,6 +69,10 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
       console.log(`${itemName} downloading ${complete} bytes`)
     }
   }).on('data', function(chunk){
+    if (downloadObject.isCanceled) {
+      error = "DownloadCanceled"
+      request.destroy()
+    }
     chunkLength += chunk.length
 
     if (downloadObject){
@@ -80,11 +89,17 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   })
 
   try {
-    await pipeline(response, outputStream)
+    await pipeline(request, outputStream)
   } catch (e){
-    if (e instanceof got.ReadError || e instanceof got.TimeoutError)
+    if (e instanceof got.ReadError || e instanceof got.TimeoutError){
       await streamTrack(outputStream, track, chunkLength, downloadObject, listener)
-    else throw e
+    } else if (request.destroyed) {
+      switch (error) {
+        case 'DownloadEmpty': throw new DownloadEmpty
+        case 'DownloadCanceled': throw new DownloadCanceled
+        default: break
+      }
+    } else { throw e }
   }
 }
 
@@ -92,6 +107,13 @@ class DownloadEmpty extends Error {
   constructor(message) {
     super(message);
     this.name = "DownloadEmpty"
+  }
+}
+
+class DownloadCanceled extends Error {
+  constructor() {
+    super()
+    this.name = "DownloadCanceled"
   }
 }
 
@@ -123,5 +145,7 @@ module.exports = {
   generateStreamURL,
   reverseStreamPath,
   reverseStreamURL,
-  streamTrack
+  streamTrack,
+  DownloadEmpty,
+  DownloadCanceled
 }
