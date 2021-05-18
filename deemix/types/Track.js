@@ -4,6 +4,7 @@ const { Album } = require('./Album.js')
 const { Playlist } = require('./Playlist.js')
 const { Picture } = require('./Picture.js')
 const { Lyrics } = require('./Lyrics.js')
+const { Date } = require('./Date.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 const { changeCase } = require('../utils/index.js')
 const { FeaturesOption } = require('../settings.js')
@@ -193,7 +194,7 @@ class Track {
     this.artist = {
         'Main': [trackAPI_gw.ART_NAME]
     }
-    this.date = Date()
+    this.date = new Date()
     this.album.artist = this.artist
     this.album.artists = this.artists
     this.album.date = this.date
@@ -226,7 +227,7 @@ class Track {
       const day = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
       const month = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
       const year = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
-      this.date = Date(day, month, year)
+      this.date = new Date(day, month, year)
     }
   }
 
