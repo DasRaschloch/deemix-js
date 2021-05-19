@@ -1,14 +1,15 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
+const { StaticPicture } = require('./types/Picture.js')
 const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
 const { tagID3, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
-const { generatePath } = require('./utils/pathtemplates.js')
+const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
 const { TrackFormats } = require('deezer-js')
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
-const { queue } = require('async')
+const { queue, each } = require('async')
 
 const extensions = {
   [TrackFormats.FLAC]:    '.flac',
@@ -122,18 +123,19 @@ class Downloader {
     this.listener = listener
 
     this.extrasPath = null
-    this.playlistCoverName = null
+    this.playlistCovername = null
     this.playlistURLs = []
   }
 
   async start(){
     if (!this.downloadObject.isCanceled){
       if (this.downloadObject.__type__ === "Single"){
-        await this.downloadWrapper({
+        let track = await this.downloadWrapper({
           trackAPI_gw: this.downloadObject.single.trackAPI_gw,
           trackAPI: this.downloadObject.single.trackAPI,
           albumAPI: this.downloadObject.single.albumAPI
         })
+        await this.afterDownloadSingle(track)
       } else if (this.downloadObject.__type__ === "Collection") {
         let tracks = []
 
@@ -151,6 +153,7 @@ class Downloader {
         })
 
         await q.drain()
+        await this.afterDownloadCollection(tracks)
       }
     }
 
@@ -165,6 +168,7 @@ class Downloader {
   }
 
   async download(extraData, track){
+    let returnData = {}
     const { trackAPI_gw, trackAPI, albumAPI, playlistAPI } = extraData
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
     if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
@@ -252,32 +256,122 @@ class Downloader {
     console.log(`${itemName} Albumart downloaded`)
 
     // Save local album art
+    if (coverPath){
+      returnData.albumURLs = []
+      this.settings.localArtworkFormat.split(',').forEach((picFormat) => {
+        if (['png', 'jpg'].includes(picFormat)){
+          let extendedFormat = picFormat
+          if (extendedFormat == 'jpg') extendedFormat += `-${this.settings.jpegImageQuality}`
+          let url = track.album.pic.getURL(this.settings.localArtworkSize, extendedFormat)
+          // Skip non deezer pictures at the wrong format
+          if (track.album.pic instanceof StaticPicture && picFormat != 'jpg') return
+          returnData.albumURLs.push({url, ext: picFormat})
+        }
+      })
+      returnData.albumPath = coverPath
+      returnData.albumFilename = generateAlbumName(this.settings.coverImageTemplate, track.album, this.settings, track.playlist)
+    }
+
     // Save artist art
+    if (artistPath){
+      returnData.artistURLs = []
+      this.settings.localArtworkFormat.split(',').forEach((picFormat) => {
+        // Deezer doesn't support png artist images
+        if (picFormat === 'jpg'){
+          let extendedFormat = `${picFormat}-${this.settings.jpegImageQuality}`
+          let url = track.album.pic.getURL(this.settings.localArtworkSize, extendedFormat)
+          // Skip non deezer pictures at the wrong format
+          if (track.album.mainArtist.pic.md5 == "") return
+          returnData.artistURLs.push({url, ext: picFormat})
+        }
+      })
+      returnData.artistPath = artistPath
+      returnData.artistFilename = generateArtistName(this.settings.artistImageTemplate, track.album.mainArtist, this.settings, track.album.rootArtist)
+    }
+
     // Save playlist art
+    if (track.playlist){
+      if (this.playlistURLs.length == 0){
+        this.settings.localArtworkFormat.split(',').forEach((picFormat) => {
+          if (['png', 'jpg'].includes(picFormat)){
+            let extendedFormat = picFormat
+            if (extendedFormat == 'jpg') extendedFormat += `-${this.settings.jpegImageQuality}`
+            let url = track.playlist.pic.getURL(this.settings.localArtworkSize, extendedFormat)
+            // Skip non deezer pictures at the wrong format
+            if (track.playlist.pic instanceof StaticPicture && picFormat != 'jpg') return
+            this.playlistURLs.push({url, ext: picFormat})
+          }
+        })
+      }
+      if (!this.playlistCovername){
+        track.playlist.bitrate = track.bitrate
+        track.playlist.dateString = track.playlist.date.format(this.settings.dateFormat)
+        this.playlistCovername = generateAlbumName(this.settings.coverImageTemplate, track.playlist, this.settings, track.playlist)
+      }
+    }
+
     // Save lyrics in lrc file
+    if (this.settings.syncedLyrics && track.lyrics.sync){
+      if (!fs.existsSync(`${filepath}/${filename}.lrc`) || [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS].includes(this.settings.overwriteFile))
+        fs.writeFileSync(`${filepath}/${filename}.lrc`, track.lyrics.sync)
+    }
+
     // Check for overwrite settings
+    let trackAlreadyDownloaded = fs.existsSync(writepath)
+
+    // Don't overwrite and don't mind extension
+    if (!trackAlreadyDownloaded && this.settings.overwriteFile == OverwriteOption.DONT_CHECK_EXT){
+      let extensions = ['.mp3', '.flac', '.opus', '.m4a']
+      let baseFilename = `${filepath}/${filename}`
+      for (let i = 0; i < extensions.length; i++){
+        let ext = extensions[i]
+        trackAlreadyDownloaded = fs.existsSync(baseFilename+ext)
+        if (trackAlreadyDownloaded) break
+      }
+    }
+
+    // Don't overwrite and keep both files
+    if (trackAlreadyDownloaded && this.settings.overwriteFile == OverwriteOption.KEEP_BOTH){
+      let baseFilename = `${filepath}/${filename}`
+      let currentFilename
+      let c = 0
+      do {
+        c++
+        currentFilename = `${baseFilename} (${c})${extension}`
+      } while (fs.existsSync(currentFilename))
+      trackAlreadyDownloaded = false
+      writepath = currentFilename
+    }
 
     // Download the track
-    console.log(`${itemName} Downloading`)
-    track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
-    let stream = fs.createWriteStream(writepath)
-    try {
-      await streamTrack(stream, track, 0, this.downloadObject, this.listener)
-    } catch (e){
-      fs.unlinkSync(writepath)
-      if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
-      throw e
+    if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
+      console.log(`${itemName} Downloading`)
+      track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+      let stream = fs.createWriteStream(writepath)
+      try {
+        await streamTrack(stream, track, 0, this.downloadObject, this.listener)
+      } catch (e){
+        fs.unlinkSync(writepath)
+        if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
+        throw e
+      }
+    } else {
+      console.log(`${itemName} Skipping track as it's already downloaded`)
+      this.downloadObject.completeTrackProgress(this.listener)
     }
 
-
-    console.log(`${itemName} Tagging file`)
     // Adding tags
-    if (extension == '.mp3'){
-      tagID3(writepath, track, this.settings.tags)
-    } else if (extension == '.flac'){
-      tagFLAC(writepath, track, this.settings.tags)
+    if (!trackAlreadyDownloaded || [OverwriteOption.ONLY_TAGS, OverwriteOption.OVERWRITE].includes(this.settings.overwriteFile) && !track.local){
+      console.log(`${itemName} Tagging file`)
+      if (extension == '.mp3'){
+        tagID3(writepath, track, this.settings.tags)
+      } else if (extension == '.flac'){
+        tagFLAC(writepath, track, this.settings.tags)
+      }
     }
-    this.downloadObject.downloadObject += 1
+
+    if (track.searched) returnData.searched = true
+    this.downloadObject.downloaded += 1
     this.downloadObject.files.push(String(writepath))
     if (this.listener)
       this.listener.send('updateQueue', {
@@ -286,8 +380,13 @@ class Downloader {
         downloadPath: String(writepath),
         extrasPath: String(this.extrasPath)
       })
-
-    return {}
+    returnData.filename = writepath.slice(extrasPath.length+1)
+    returnData.data = {
+      id: track.id,
+      title: track.title,
+      artist: track.mainArtist.name
+    }
+    return returnData
   }
 
   async downloadWrapper(extraData, track){
@@ -355,12 +454,12 @@ class Downloader {
     }
 
     if (result.error){
-      this.downloadObject.completeTrackProgress(this.interface)
+      this.downloadObject.completeTrackProgress(this.listener)
       this.downloadObject.failed += 1
       this.downloadObject.errors.push(result.error)
-      if (this.interface){
+      if (this.listener){
         let error = result.error
-        this.interface.send("updateQueue", {
+        this.listener.send("updateQueue", {
           uuid: this.downloadObject.uuid,
           failed: true,
           data: error.data,
@@ -370,6 +469,90 @@ class Downloader {
       }
     }
     return result
+  }
+
+  async afterDownloadSingle(track){
+    if (!this.extrasPath) this.extrasPath = this.settings.downloadLocation
+
+    // Save local album artwork
+    if (this.settings.saveArtwork && track.albumPath)
+      await each(track.albumURLs, async (image) => {
+        await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
+      })
+
+    // Save local artist artwork
+    if (this.settings.saveArtworkArtist && track.artistPath)
+      await each(track.artistURLs, async (image) => {
+        await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
+      })
+
+    // Create searched logfile
+    if (this.settings.logSearched && track.searched){
+      let filename = `${track.data.artist} - ${track.data.title}`
+      let searchedFile = fs.readFileSync(`${this.extrasPath}/searched.txt`).toString()
+      if (searchedFile.indexOf(filename) == -1){
+        if (searchedFile != "") searchedFile += "\r\n"
+        searchedFile += filename + "\r\n"
+        fs.writeFileSync(`${this.extrasPath}/searched.txt`, searchedFile)
+      }
+    }
+
+    // Execute command after download
+  }
+
+  async afterDownloadCollection(tracks){
+    if (!this.extrasPath) this.extrasPath = this.settings.downloadLocation
+    let playlist = []
+    let errors = ""
+    let searched = ""
+
+    await each(tracks, async (track, i) => {
+      if (!track) return
+
+      if (track.error){
+        if (!track.error.data) track.error.data = {id: "0", title: 'Unknown', artist: 'Unknown'}
+        errors += `${track.error.data.id} | ${track.error.data.artist} - ${track.error.data.title} | ${track.error.message}\r\n`
+      }
+
+      if (track.searched) searched += `${track.data.artist} - ${track.data.title}\r\n`
+
+      // Save local album artwork
+      if (this.settings.saveArtwork && track.albumPath)
+        await each(track.albumURLs, async (image) => {
+          await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
+        })
+
+      // Save local artist artwork
+      if (this.settings.saveArtworkArtist && track.artistPath)
+        await each(track.artistURLs, async (image) => {
+          await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
+        })
+
+      // Save filename for playlist file
+      playlist[i] = track.filename || ""
+    })
+
+    // Create errors logfile
+    if (this.settings.logErrors && errors != "")
+      fs.writeFileSync(`${this.extrasPath}/errors.txt`, errors)
+
+    // Create searched logfile
+    if (this.settings.logSearched && searched != "")
+      fs.writeFileSync(`${this.extrasPath}/searched.txt`, searched)
+
+    // Save Playlist Artwork
+    if (this.settings.saveArtwork && this.playlistCovername && !this.settings.tags.savePlaylistAsCompilation)
+      await each(this.playlistURLs, async (image) => {
+        await downloadImage(image.url, `${this.extrasPath}/${this.playlistCovername}.${image.ext}`, this.settings.overwriteFile)
+      })
+
+    // Create M3U8 File
+    if (this.settings.createM3U8File){
+      let filename = generateDownloadObjectName(this.settings.playlistFilenameTemplate, this.downloadObject, this.settings) || "playlist"
+      fs.writeFileSync(`${this.extrasPath}/${filename}.m3u8`, playlist.join('\n'))
+    }
+
+    // Execute command after download
   }
 }
 

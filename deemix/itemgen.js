@@ -148,7 +148,8 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
   playlistAPI.nb_tracks = totalSize
   let collection = []
   playlistTracksAPI.forEach((trackAPI, pos) => {
-    //TODO: Add explicit check
+    if (trackAPI.EXPLICIT_TRACK_CONTENT && [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(trackAPI.EXPLICIT_TRACK_CONTENT.EXPLICIT_LYRICS_STATUS))
+      playlistAPI.explicit = true
     trackAPI.POSITION = pos+1
     trackAPI.SIZE = totalSize
     collection.push(trackAPI)

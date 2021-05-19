@@ -81,7 +81,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
       switch (error) {
         case 'DownloadEmpty': throw new DownloadEmpty
         case 'DownloadCanceled': throw new DownloadCanceled
-        default: break
+        default: throw e
       }
     } else { throw e }
   }

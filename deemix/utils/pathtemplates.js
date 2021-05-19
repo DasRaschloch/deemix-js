@@ -231,7 +231,7 @@ function generatePlaylistName(foldername, playlist, settings){
   return antiDot(fixLongName(foldername))
 }
 
-function generateDownloadItemName(foldername, queueItem, settings){
+function generateDownloadObjectName(foldername, queueItem, settings){
   let c = settings['illegalCharacterReplacer']
   foldername = foldername.replaceAll("%title%", fixName(queueItem.title, c))
   foldername = foldername.replaceAll("%artist%", fixName(queueItem.artist, c))
@@ -249,5 +249,5 @@ module.exports = {
   generateAlbumName,
   generateArtistName,
   generatePlaylistName,
-  generateDownloadItemName
+  generateDownloadObjectName
 }
