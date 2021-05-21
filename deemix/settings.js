@@ -49,7 +49,7 @@ const DEFAULTS = {
   syncedLyrics: false,
   embeddedArtworkSize: 800,
   embeddedArtworkPNG: false,
-  localArtworkSize: 1400,
+  localArtworkSize: 1200,
   localArtworkFormat: "jpg",
   saveArtwork: true,
   coverImageTemplate: "cover",
@@ -121,13 +121,13 @@ function load(configFolder){
 function check(settings){
   let changes = 0
   Object.keys(DEFAULTS).forEach( _iSet => {
-    if (! settings[_iSet] || typeof settings[_iSet] != DEFAULTS[_iSet]){
+    if (settings[_iSet] === undefined || typeof settings[_iSet] != typeof DEFAULTS[_iSet]){
       settings[_iSet] = DEFAULTS[_iSet]
       changes++
     }
   })
   Object.keys(DEFAULTS.tags).forEach( _iSet => {
-    if (! settings.tags[_iSet] || typeof settings.tags[_iSet] != DEFAULTS.tags[_iSet]){
+    if (settings.tags[_iSet] === undefined || typeof settings.tags[_iSet] != typeof DEFAULTS.tags[_iSet]){
       settings.tags[_iSet] = DEFAULTS.tags[_iSet]
       changes++
     }
