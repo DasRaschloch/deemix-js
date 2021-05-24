@@ -3,9 +3,19 @@ const {CookieJar} = require('tough-cookie')
 const {_md5} = require('./crypto.js')
 const { USER_AGENT_HEADER } = require('./index.js')
 
+const CLIENT_ID = "172365"
+const CLIENT_SECRET = "fb0bec7ccc063dab0417eb7b0d847f34"
+
 async function getAccessToken(email, password){
   password = _md5(password, 'utf8')
-  let response = await got.get(`https://tv.deezer.com/smarttv/8caf9315c1740316053348a24d25afc7/user_auth.php?login=${email}&password=${password}&device=panasonic&output=jsonp`,{
+  const hash = _md5([CLIENT_ID, email, password, CLIENT_SECRET].join(''), 'utf8')
+  let response = await got.get(`https://api.deezer.com/auth/token`,{
+    searchParams: {
+      app_id: CLIENT_ID,
+      login: email,
+      password: password,
+      hash
+    },
     headers: {"User-Agent": USER_AGENT_HEADER}
   }).json()
   console.log(response)
