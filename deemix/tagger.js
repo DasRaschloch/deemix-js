@@ -1,25 +1,26 @@
-const ID3Writer = require('browser-id3-writer')
+const ID3Writer = require('./utils/id3-writer.js')
 const Metaflac = require('metaflac-js2')
 const fs = require('fs')
 
 function tagID3(path, track, save){
   const songBuffer = fs.readFileSync(path)
   const tag = new ID3Writer(songBuffer)
+  if (save.useNullSeparator) tag.separator = String.fromCharCode(0)
 
   if (save.title) tag.setFrame('TIT2', track.title)
 
   if (save.artist && track.artists.length){
     if (save.multiArtistSeparator == "default"){
-      tag.setFrame('TPE1', track.artists)
+      tag.setArrayFrame('TPE1', track.artists)
     }else{
       if (save.multiArtistSeparator == "nothing"){
-        tag.setFrame('TPE1', track.mainArtist.name)
+        tag.setArrayFrame('TPE1', [track.mainArtist.name])
       } else {
-        tag.setFrame('TPE1', track.artistString)
+        tag.setArrayFrame('TPE1', [track.artistString])
       }
       // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
       // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
-      tag.setFrame('TXXX', {
+      tag.setArrayFrame('TXXX', {
         description: 'ARTISTS',
         value: track.artists
       })
@@ -30,9 +31,9 @@ function tagID3(path, track, save){
 
   if (save.albumArtist && track.album.artists.length){
     if (save.singleAlbumArtist && track.album.mainArtist.save){
-      tag.setFrame('TPE2', track.album.mainArtist.name)
+      tag.setArrayFrame('TPE2', [track.album.mainArtist.name])
     } else {
-      tag.setFrame('TPE2', track.album.artists)
+      tag.setArrayFrame('TPE2', track.album.artists)
     }
   }
 
@@ -47,7 +48,7 @@ function tagID3(path, track, save){
     tag.setFrame('TPOS', discNumber)
   }
 
-  if (save.genre) tag.setFrame('TCON', track.album.genre)
+  if (save.genre) tag.setArrayFrame('TCON', track.album.genre)
   if (save.year) tag.setFrame('TYER', track.date.year)
 
   // Referencing ID3 standard
