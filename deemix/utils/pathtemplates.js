@@ -85,7 +85,7 @@ function generatePath(track, downloadObject, settings){
     (settings.createArtistFolder && track.playlist && settings.tags.savePlaylistAsCompilation) ||
     (settings.createArtistFolder && track.playlist && settings.createStructurePlaylist)
   ){
-    filepath += `/${generateArtistName(settings.artistNameTemplate, track.album.mainAritst, settings, track.album.rootArtist)}`
+    filepath += `/${generateArtistName(settings.artistNameTemplate, track.album.mainArtist, settings, track.album.rootArtist)}`
     artistPath = filepath
   }
 

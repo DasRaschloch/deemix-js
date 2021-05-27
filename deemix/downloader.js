@@ -446,6 +446,7 @@ class Downloader {
         }}
       } else if (! (e instanceof DownloadCanceled)){
         console.error(`${itemName} ${e.message}`)
+        console.trace(e)
         result = {error:{
           message: e.message,
           data: tempTrack
