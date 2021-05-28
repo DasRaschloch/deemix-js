@@ -49,7 +49,17 @@ async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
   let link_type, link_id
   [link, link_type, link_id] = await parseLink(link)
 
-  if (link_type == null || link_id == null) return null
+  if (link_type == null || link_id == null){
+    const pluginNames = Object.keys(plugins)
+    let currentPlugin
+    let item = null
+    for (let i = 0; i < pluginNames.length; i++){
+      currentPlugin = plugins[pluginNames[i]]
+      item = await currentPlugin.generateDownloadObject(dz, link, bitrate, listener)
+      if (item) break
+    }
+    return item
+  }
 
   switch (link_type) {
     case 'track':
@@ -65,7 +75,6 @@ async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
     case 'artist_top':
       return generateArtistTopItem(dz, link_id, bitrate)
   }
-  return null
 }
 
 module.exports = {
@@ -99,5 +108,8 @@ module.exports = {
     localpaths: require('./utils/localpaths.js'),
     pathtemplates: require('./utils/pathtemplates.js'),
     deezer: require('./utils/deezer.js')
+  },
+  plugins: {
+    spotify: require('./plugins/spotify.js')
   }
 }

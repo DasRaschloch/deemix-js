@@ -14,7 +14,8 @@
     "crypto": "^1.0.1",
     "deezer-js": "^0.0.8",
     "got": "^11.8.2",
-    "metaflac-js2": "^1.0.7"
+    "metaflac-js2": "^1.0.7",
+    "spotify-web-api-node": "^5.0.2"
   },
   "devDependencies": {
     "eslint": "^7.23.0"

@@ -307,6 +307,20 @@ class NotYourPrivatePlaylist extends GenerationError {
   }
 }
 
+class TrackNotOnDeezer extends GenerationError {
+  constructor(message) {
+    super(message);
+    this.name = "TrackNotOnDeezer";
+  }
+}
+
+class AlbumNotOnDeezer extends GenerationError {
+  constructor(message) {
+    super(message);
+    this.name = "AlbumNotOnDeezer";
+  }
+}
+
 module.exports = {
   generateTrackItem,
   generateAlbumItem,
@@ -317,5 +331,7 @@ module.exports = {
 
   GenerationError,
   ISRCnotOnDeezer,
-  NotYourPrivatePlaylist
+  NotYourPrivatePlaylist,
+  TrackNotOnDeezer,
+  AlbumNotOnDeezer
 }
