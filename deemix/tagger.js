@@ -217,7 +217,73 @@ function tagFLAC(path, track, save){
   flac.save()
 }
 
+const id3v1Genres = ["Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk", "Grunge", "Hip-Hop", "Jazz", "Metal", "New Age", "Oldies", "Other", "Pop", "Rhythm and Blues", "Rap", "Reggae", "Rock", "Techno", "Industrial", "Alternative", "Ska", "Death Metal", "Pranks", "Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz & Funk", "Fusion", "Trance", "Classical", "Instrumental", "Acid", "House", "Game", "Sound clip", "Gospel", "Noise", "Alternative Rock", "Bass", "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", "Instrumental Rock", "Ethnic", "Gothic", "Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock", "Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle music", "Native US", "Cabaret", "New Wave", "Psychedelic", "Rave", "Showtunes", "Trailer", "Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock ’n’ Roll", "Hard Rock", "Folk", "Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebop", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock", "Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", "Acoustic", "Humour", "Speech", "Chanson", "Opera", "Chamber Music", "Sonata", "Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire", "Slow Jam", "Club", "Tango", "Samba", "Folklore", "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle", "Duet", "Punk Rock", "Drum Solo", "A cappella", "Euro-House", "Dance Hall", "Goa music", "Drum & Bass", "Club-House", "Hardcore Techno", "Terror", "Indie", "BritPop", "Negerpunk", "Polsk Punk", "Beat", "Christian Gangsta Rap", "Heavy Metal", "Black Metal", "Crossover", "Contemporary Christian", "Christian Rock", "Merengue", "Salsa", "Thrash Metal", "Anime", "Jpop", "Synthpop", "Abstract", "Art Rock", "Baroque", "Bhangra", "Big beat", "Breakbeat", "Chillout", "Downtempo", "Dub", "EBM", "Eclectic", "Electro", "Electroclash", "Emo", "Experimental", "Garage", "Global", "IDM", "Illbient", "Industro-Goth", "Jam Band", "Krautrock", "Leftfield", "Lounge", "Math Rock", "New Romantic", "Nu-Breakz", "Post-Punk", "Post-Rock", "Psytrance", "Shoegaze", "Space Rock", "Trop Rock", "World Music", "Neoclassical", "Audiobook", "Audio Theatre", "Neue Deutsche Welle", "Podcast", "Indie-Rock", "G-Funk", "Dubstep", "Garage Rock", "Psybient"]
+
+// Filters only Extended Ascii characters
+function extAsciiFilter(string){
+  let output = ""
+  string.split('').forEach((x)=>{
+    if (x.charCodeAt(0) > 255)
+      output += "?"
+    else
+      output += x
+  })
+  return output
+}
+
+function tagID3v1(path, track, save){
+  const tagBuffer = Buffer.alloc(128)
+
+  tagBuffer.write('TAG', 0) // Header
+  if (save.title){
+    let trimmedTitle = extAsciiFilter(track.title.substring(0, 30))
+    tagBuffer.write(trimmedTitle, 3)
+  }
+  if (save.artist){
+    let selectedArtist
+    if (track.artistString) selectedArtist = track.artistString
+    else selectedArtist = track.mainArtist.name
+
+    let trimmedArtist = extAsciiFilter(selectedArtist.substring(0, 30))
+    tagBuffer.write(trimmedArtist, 33)
+  }
+  if (save.album){
+    let trimmedAlbum = extAsciiFilter(track.album.title.substring(0, 30))
+    tagBuffer.write(trimmedAlbum, 63)
+  }
+  if (save.year){
+    let trimmedYear = track.date.year.substring(0,4)
+    tagBuffer.write(trimmedYear, 93)
+  }
+  if (save.trackNumber){
+    if (track.trackNumber <= 65535){
+      if (track.trackNumber > 255){
+        tagBuffer.writeUInt8(parseInt(track.trackNumber >> 8), 125)
+        tagBuffer.writeUInt8(parseInt(track.trackNumber & 255), 126)
+      }else{
+        tagBuffer.writeUInt8(parseInt(track.trackNumber), 126)
+      }
+    }
+  }
+  if (save.genre){
+    let selectedGenre = track.album.genre[0]
+    if (id3v1Genres.includes(selectedGenre)) tagBuffer.writeUInt8(id3v1Genres.indexOf(selectedGenre), 127)
+    else tagBuffer.writeUInt8(255, 127)
+  }else{
+    tagBuffer.writeUInt8(255, 127)
+  }
+
+  // Save tags
+  const songBuffer = fs.readFileSync(path)
+  const buffer = new ArrayBuffer(songBuffer.byteLength + 128)
+  const bufferWriter = new Uint8Array(buffer)
+  bufferWriter.set(new Uint8Array(songBuffer), 0)
+  bufferWriter.set(new Uint8Array(tagBuffer), songBuffer.byteLength)
+  fs.writeFileSync(path, Buffer.from(buffer))
+}
+
 module.exports = {
   tagID3,
-  tagFLAC
+  tagFLAC,
+  tagID3v1
 }

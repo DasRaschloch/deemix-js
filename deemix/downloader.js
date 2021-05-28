@@ -1,7 +1,7 @@
 const { Track, AlbumDoesntExists } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
 const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
-const { tagID3, tagFLAC } = require('./tagger.js')
+const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
@@ -365,6 +365,7 @@ class Downloader {
       console.log(`${itemName} Tagging file`)
       if (extension == '.mp3'){
         tagID3(writepath, track, this.settings.tags)
+        if (this.settings.tags.saveID3v1) tagID3v1(writepath, track, this.settings.tags)
       } else if (extension == '.flac'){
         tagFLAC(writepath, track, this.settings.tags)
       }
