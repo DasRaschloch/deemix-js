@@ -1,4 +1,4 @@
-const { Track, AlbumDoesntExists } = require('./types/Track.js')
+const { Track } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
 const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
 const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
@@ -190,7 +190,8 @@ class Downloader {
           playlistAPI
         )
       } catch (e){
-        if (e instanceof AlbumDoesntExists) { throw new DownloadFailed('albumDoesntExists') }
+        if (e.name === "AlbumDoesntExists") { throw new DownloadFailed('albumDoesntExists') }
+        if (e.name === "MD5NotFound") { throw new DownloadFailed('notLoggedIn') }
         console.error(e)
         throw e
       }
@@ -213,8 +214,8 @@ class Downloader {
         this.downloadObject.uuid, this.listener
       )
     }catch (e){
-      if (e instanceof PreferredBitrateNotFound) { throw new DownloadFailed("wrongBitrate", track) }
-      if (e instanceof TrackNot360) { throw new DownloadFailed("no360RA") }
+      if (e.name === "PreferredBitrateNotFound") { throw new DownloadFailed("wrongBitrate", track) }
+      if (e.name === "TrackNot360") { throw new DownloadFailed("no360RA") }
       console.error(e)
       throw e
     }
@@ -575,7 +576,8 @@ const errorMessages = {
     notAvailable: "Track not available on deezer's servers!",
     notAvailableNoAlternative: "Track not available on deezer's servers and no alternative found!",
     noSpaceLeft: "No space left on target drive, clean up some space for the tracks.",
-    albumDoesntExists: "Track's album does not exsist, failed to gather info."
+    albumDoesntExists: "Track's album does not exsist, failed to gather info.",
+    notLoggedIn: "You need to login to download tracks."
 }
 
 class DownloadFailed extends DownloadError {

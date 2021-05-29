@@ -143,6 +143,7 @@ class Convertable extends Collection{
     let item = super.toDict()
     item.plugin = this.plugin
     item.conversion_data = this.conversion_data
+    return item
   }
 }
 

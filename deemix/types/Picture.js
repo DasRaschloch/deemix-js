@@ -27,7 +27,7 @@ class StaticPicture {
     this.staticURL = url
   }
 
-  getUrl() {
+  getURL() {
     return this.staticURL
   }
 }

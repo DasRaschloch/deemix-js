@@ -6,10 +6,12 @@ const {
   TrackNotOnDeezer,
   AlbumNotOnDeezer
 } = require('../itemgen.js')
+const { Convertable, Collection } = require('../types/DownloadObjects.js')
 const { sep } = require('path')
 const fs = require('fs')
 const SpotifyWebApi = require('spotify-web-api-node')
 const got = require('got')
+const { queue } = require('async')
 
 class Spotify extends Plugin {
   constructor(configFolder = undefined){
@@ -58,8 +60,7 @@ class Spotify extends Plugin {
     return [link, link_type, link_id]
   }
 
-  /*eslint no-unused-vars: ["error", { "args": "none" }]*/
-  async generateDownloadObject(dz, link, bitrate, _){
+  async generateDownloadObject(dz, link, bitrate){
     let link_type, link_id
     [link, link_type, link_id] = await this.parseLink(link)
 
@@ -76,7 +77,7 @@ class Spotify extends Plugin {
   }
 
   async generateTrackItem(dz, link_id, bitrate){
-    let [track_id, trackAPI, _] = await this.convertTrack(dz, link_id)
+    let [track_id, trackAPI] = await this.convertTrack(dz, link_id)
 
     if (track_id !== "0"){
       return generateTrackItem(dz, track_id, bitrate, trackAPI)
@@ -96,7 +97,47 @@ class Spotify extends Plugin {
   }
 
   async generatePlaylistItem(dz, link_id, bitrate){
-    throw new Error("Not implemented yet")
+    if (!this.enabled) throw new Error("Spotify plugin not enabled")
+    let spotifyPlaylist = await this.sp.getPlaylist(link_id)
+    spotifyPlaylist = spotifyPlaylist.body
+
+    let playlistAPI = this._convertPlaylistStructure(spotifyPlaylist)
+    playlistAPI.various_artist = await dz.api.get_artist(5080) // Useful for save as compilation
+
+    let tracklistTemp = spotifyPlaylist.tracks.items
+    while (spotifyPlaylist.tracks.next) {
+      let regExec = /offset=(\d+)&limit=(\d+)/g.exec(spotifyPlaylist.tracks.next)
+      let offset = regExec[1]
+      let limit = regExec[2]
+      let playlistTracks = await this.sp.getPlaylistTracks(link_id, { offset, limit })
+      spotifyPlaylist.tracks = playlistTracks.body
+      tracklistTemp = tracklistTemp.concat(spotifyPlaylist.tracks.items)
+    }
+
+    let tracklist = []
+    tracklistTemp.forEach((item) => {
+      if (!item.track) return // Skip everything that isn't a track
+      if (item.track.explicit && !playlistAPI.explicit) playlistAPI.explicit = true
+      tracklist.push(item.track)
+    })
+    if (!playlistAPI.explicit) playlistAPI.explicit = false
+
+    return new Convertable({
+      type: 'spotify_playlist',
+      id: link_id,
+      bitrate,
+      title: spotifyPlaylist.name,
+      artist: spotifyPlaylist.owner.display_name,
+      cover: playlistAPI.picture_thumbnail,
+      explicit: playlistAPI.explicit,
+      size: tracklist.length,
+      collection: {
+        tracks_gw: [],
+        playlistAPI: playlistAPI
+      },
+      plugin: 'spotify',
+      conversion_data: tracklist
+    })
   }
 
   async convertTrack(dz, track_id, fallbackSearch = false, cachedTrack = null){
@@ -104,11 +145,18 @@ class Spotify extends Plugin {
     let shouldSaveCache = false
     let cache
     if (!cachedTrack){
-      // Read spotify cache
-      cache = {tracks: {}, albums: {}}
+      try {
+        cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
+      } catch {
+        cache = {tracks: {}, albums: {}}
+      }
       shouldSaveCache = true
-      cachedTrack = await this.sp.getTrack(track_id)
-      cachedTrack = cachedTrack.body
+      if (cache.tracks[track_id]){
+        cachedTrack = cache.tracks[track_id]
+      } else {
+        cachedTrack = await this.sp.getTrack(track_id)
+        cachedTrack = cachedTrack.body
+      }
     }
 
     let dz_id = "0"
@@ -129,7 +177,7 @@ class Spotify extends Plugin {
 
     if (shouldSaveCache){
       cache.tracks[track_id] = {id: dz_id, isrc: isrc}
-      // Save edited cache
+      fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
     }
     return [dz_id, dz_track, isrc]
   }
@@ -138,9 +186,14 @@ class Spotify extends Plugin {
     if (!this.enabled) throw new Error("Spotify plugin not enabled")
     let cachedAlbum
     let cache
-    // Read spotify cache
-    cache = {tracks: {}, albums: {}}
-    if (!cachedAlbum){
+    try {
+      cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
+    } catch {
+      cache = {tracks: {}, albums: {}}
+    }
+    if (cache.albums[album_id]){
+      cachedAlbum = cache.albums[album_id]
+    } else {
       cachedAlbum = await this.sp.getAlbum(album_id)
       cachedAlbum = cachedAlbum.body
     }
@@ -165,9 +218,119 @@ class Spotify extends Plugin {
       if (dz_album && dz_album.title && dz_album.id) dz_id = dz_album.id
     }
 
-    cache.tracks[album_id] = {id: dz_id, upc: upc}
-    // Save cache
+    cache.albums[album_id] = {id: dz_id, upc: upc}
+    fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
     return dz_id
+  }
+
+  async convert(dz, downloadObject, settings, listener = null){
+    let cache
+    try {
+      cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
+    } catch {
+      cache = {tracks: {}, albums: {}}
+    }
+
+    let conversion = 0
+    let conversionNext = 0
+
+    let collection = []
+    let q = queue(async (data) => {
+      let {track, pos} = data
+      if (downloadObject.cancel) return
+
+      let dz_id, trackAPI
+      if (cache.tracks[track.id]){
+        dz_id = cache.tracks[track.id].id
+        if (cache.tracks[track.id].isrc) trackAPI = await dz.api.get_track_by_ISRC(cache.tracks[track.id].isrc)
+      } else {
+        let isrc
+        [dz_id, trackAPI, isrc] = await this.convertTrack(dz, "0", settings.fallbackSearch, track)
+        cache.tracks[track.id] = {
+          id: dz_id,
+          isrc
+        }
+      }
+
+      let deezerTrack
+      if (String(dz_id) == "0"){
+        deezerTrack = {
+          SNG_ID: "0",
+          SNG_TITLE: track.name,
+          DURATION: 0,
+          MD5_ORIGIN: 0,
+          MEDIA_VERSION: 0,
+          FILESIZE: 0,
+          ALB_TITLE: track.album.name,
+          ALB_PICTURE: "",
+          ART_ID: 0,
+          ART_NAME: track.artists[0].name
+        }
+      } else {
+        deezerTrack = await dz.gw.get_track_with_fallback(dz_id)
+      }
+      if (trackAPI) deezerTrack._EXTRA_TRACK = trackAPI
+      deezerTrack.POSITION = pos
+      deezerTrack.SIZE = downloadObject.size
+      collection.push(deezerTrack)
+
+      conversionNext += (1 / downloadObject.size) * 100
+      if (Math.round(conversionNext) != conversion && Math.round(conversionNext) % 2 == 0){
+        conversion = Math.round(conversionNext)
+        if (listener) listener.send('updateQueue', {uuid: downloadObject.uuid, conversion})
+      }
+    }, settings.queueConcurrency)
+
+    downloadObject.conversion_data.forEach((track, pos) => {
+      q.push({track, pos: pos+1})
+    });
+
+    await q.drain()
+
+    downloadObject.collection.tracks_gw = collection
+    downloadObject.size = collection.length
+    downloadObject = new Collection(downloadObject.toDict())
+
+    fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
+    return downloadObject
+  }
+
+  _convertPlaylistStructure(spotifyPlaylist){
+    let cover
+    if (spotifyPlaylist.images.length) cover = spotifyPlaylist.images[0].url
+    else cover = null
+
+    let deezerPlaylist = {
+      checksum: spotifyPlaylist.snapshot_id,
+      collaborative: spotifyPlaylist.collaborative,
+      creation_date: "XXXX-00-00",
+      creator: {
+        id: spotifyPlaylist.owner.id,
+        name: spotifyPlaylist.owner.display_name,
+        tracklist: spotifyPlaylist.owner.href,
+        type: "user"
+      },
+      description: spotifyPlaylist.description,
+      duration: 0,
+      fans: spotifyPlaylist.followers ? spotifyPlaylist.followers.total : 0,
+      id: spotifyPlaylist.id,
+      is_loved_track: false,
+      link: spotifyPlaylist.external_urls.spotify,
+      nb_tracks: spotifyPlaylist.tracks.total,
+      picture: cover,
+      picture_small: cover || "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/56x56-000000-80-0-0.jpg",
+      picture_medium: cover || "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/250x250-000000-80-0-0.jpg",
+      picture_big: cover || "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/500x500-000000-80-0-0.jpg",
+      picture_xl: cover || "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg",
+      picture_thumbnail: cover || "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg",
+      public: spotifyPlaylist.public,
+      share: spotifyPlaylist.external_urls.spotify,
+      title: spotifyPlaylist.name,
+      tracklist: spotifyPlaylist.tracks.href,
+      type: "playlist"
+    }
+
+    return deezerPlaylist
   }
 
   async checkCredentials(){
