@@ -24,12 +24,13 @@ class Spotify extends Plugin {
     return this
   }
 
-  async setup(){
+  setup(){
     fs.mkdirSync(this.configFolder, { recursive: true })
 
     if (! fs.existsSync(this.configFolder+'credentials.json')) fs.writeFileSync(this.configFolder+'credentials.json', JSON.stringify(this.credentials))
     this.credentials = JSON.parse(fs.readFileSync(this.configFolder+'credentials.json'))
-    await this.checkCredentials()
+    this.checkCredentials()
+    return this
   }
 
   async parseLink(link){
@@ -334,33 +335,35 @@ class Spotify extends Plugin {
     return deezerPlaylist
   }
 
-  async checkCredentials(){
+  checkCredentials(){
     if (this.credentials.clientId === "" || this.credentials.clientSecret === ""){
       this.enabled = false
       return
     }
     this.sp = new SpotifyWebApi(this.credentials)
-    try {
-      const creds = await this.sp.clientCredentialsGrant()
-      this.sp.setAccessToken(creds.body.access_token)
-      this.enabled = true
-    } catch (e){
-      this.enabled = false
-      this.sp = undefined
-    }
+    this.sp.clientCredentialsGrant().then(
+      (creds)=>{
+        this.sp.setAccessToken(creds.body.access_token)
+        this.enabled = true
+      },
+      ()=>{
+        this.enabled = false
+        this.sp = undefined
+      }
+    )
   }
 
   getCredentials(){
     return this.credentials
   }
 
-  async setCredentials(newCredentials){
+  setCredentials(newCredentials){
     newCredentials.clientId = newCredentials.clientId.trim()
     newCredentials.clientSecret = newCredentials.clientSecret.trim()
 
     this.credentials = newCredentials
     fs.writeFileSync(this.configFolder+'credentials.json', JSON.stringify(this.credentials))
-    await this.checkCredentials()
+    this.checkCredentials()
   }
 }
 
