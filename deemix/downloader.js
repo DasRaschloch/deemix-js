@@ -210,7 +210,7 @@ class Downloader {
       selectedFormat = await getPreferredBitrate(
         track,
         this.bitrate,
-        true, // fallbackBitrate
+        this.settings.fallbackBitrate,
         this.downloadObject.uuid, this.listener
       )
     }catch (e){
