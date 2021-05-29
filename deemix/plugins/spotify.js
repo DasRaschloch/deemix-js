@@ -235,6 +235,7 @@ class Spotify extends Plugin {
     let conversionNext = 0
 
     let collection = []
+    if (listener) listener.send("startConversion", downloadObject.uuid)
     let q = queue(async (data) => {
       let {track, pos} = data
       if (downloadObject.cancel) return
