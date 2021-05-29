@@ -16,7 +16,7 @@ function tagID3(path, track, save){
       if (save.multiArtistSeparator == "nothing"){
         tag.setArrayFrame('TPE1', [track.mainArtist.name])
       } else {
-        tag.setArrayFrame('TPE1', [track.artistString])
+        tag.setArrayFrame('TPE1', [track.artistsString])
       }
       // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
       // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
@@ -145,7 +145,7 @@ function tagFLAC(path, track, save){
       if (save.multiArtistSeparator == "nothing"){
         flac.setTag(`ARTIST=${track.mainArtist.name}`)
       } else {
-        flac.setTag(`ARTIST=${track.artistString}`)
+        flac.setTag(`ARTIST=${track.artistsString}`)
       }
       // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
       // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
@@ -245,7 +245,7 @@ function tagID3v1(path, track, save){
   }
   if (save.artist){
     let selectedArtist
-    if (track.artistString) selectedArtist = track.artistString
+    if (track.artistsString) selectedArtist = track.artistsString
     else selectedArtist = track.mainArtist.name
 
     let trimmedArtist = extAsciiFilter(selectedArtist.substring(0, 30))
