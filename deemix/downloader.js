@@ -31,7 +31,26 @@ async function downloadImage(url, path, overwrite){
   const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000})
   const fileWriterStream = fs.createWriteStream(path)
 
-  await pipeline(downloadStream, fileWriterStream)
+  try {
+    await pipeline(downloadStream, fileWriterStream)
+  } catch (e){
+    fs.unlinkSync(path)
+    if (e instanceof got.HTTPError) {
+      if (url.includes('images.dzcdn.net')){
+        let urlBase = url.slice(0, url.lastIndexOf('/')+1)
+        let pictureURL = url.slice(urlBase.length)
+        let pictureSize = parseInt(pictureURL.slice(0, pictureURL.indexOf('x')))
+        if (pictureSize > 1200)
+          return downloadImage(urlBase+pictureURL.replace(`${pictureSize}x${pictureSize}`, '1200x1200'))
+      }
+      return null
+    }
+    if (e instanceof got.TimeoutError) {
+      return downloadImage(url, path, overwrite)
+    }
+    console.trace(e)
+    throw e
+  }
   return path
 }
 
