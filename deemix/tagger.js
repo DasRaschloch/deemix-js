@@ -72,7 +72,11 @@ function tagID3(path, track, save){
     description: 'REPLAYGAIN_TRACK_GAIN',
     value: track.replayGain
   })
-  if (save.lyrics && track.lyrics.unsync) tag.setFrame('USLT', track.lyrics.unsync)
+  if (save.lyrics && track.lyrics.unsync) tag.setFrame('USLT', {
+    description: '',
+    lyrics: track.lyrics.unsync,
+    language: 'XXX'
+  })
 
   // TODO: Uncomment when implemented in lib
   /*
