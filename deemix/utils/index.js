@@ -71,6 +71,12 @@ function uniqueArray(arr){
   return arr
 }
 
+function shellEscape(s){
+  if (typeof s !== 'string') return ''
+  if (!(/[^\w@%+=:,./-]/g.test(s))) return s
+  return "'" + s.replaceAll("'", "'\"'\"'") + "'"
+}
+
 function removeDuplicateArtists(artist, artists){
   artists = uniqueArray(artists)
   Object.keys(artist).forEach((role) => {
@@ -88,5 +94,6 @@ module.exports = {
   removeDuplicateArtists,
   pipeline,
   canWrite,
-  changeCase
+  changeCase,
+  shellEscape
 }

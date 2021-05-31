@@ -2,7 +2,7 @@ const { Track } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
 const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
 const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
-const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
+const { USER_AGENT_HEADER, pipeline, shellEscape } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
 const { TrackFormats } = require('deezer-js')
@@ -10,6 +10,7 @@ const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
 const { queue, each, eachOf } = require('async')
+const { exec } = require("child_process")
 
 const extensions = {
   [TrackFormats.FLAC]:    '.flac',
@@ -520,6 +521,8 @@ class Downloader {
     }
 
     // Execute command after download
+    if (this.settings.executeCommand !== "")
+      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
   }
 
   async afterDownloadCollection(tracks){
@@ -575,6 +578,8 @@ class Downloader {
     }
 
     // Execute command after download
+    if (this.settings.executeCommand !== "")
+      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.extrasPath)).replaceAll("%filename%", ''))
   }
 }
 
