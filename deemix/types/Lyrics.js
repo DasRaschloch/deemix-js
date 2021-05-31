@@ -19,7 +19,7 @@ class Lyrics {
           this.syncID3.push([syncLyricsJson[line].line, milliseconds])
         }else{
           let notEmptyLine = line + 1
-          while (syncLyricsJson[notEmptyLine].line == "") notEmptyLine = line + 1
+          while (syncLyricsJson[notEmptyLine].line == "") notEmptyLine += 1
           timestamp = syncLyricsJson[notEmptyLine].lrc_timestamp
         }
         this.sync += timestamp + syncLyricsJson[line].line + "\r\n"
