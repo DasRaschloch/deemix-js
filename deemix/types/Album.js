@@ -128,6 +128,10 @@ class Album {
     let explicitLyricsStatus = albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS
     this.explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(explicitLyricsStatus)
 
+    this.addExtraAlbumGWData(albumAPI_gw)
+  }
+
+  addExtraAlbumGWData(albumAPI_gw){
     if (this.pic.md5 == ""){
       this.pic.md5 = albumAPI_gw.ALB_PICTURE
     }

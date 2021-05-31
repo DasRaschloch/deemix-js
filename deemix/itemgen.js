@@ -71,6 +71,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   let albumAPI_gw = await dz.gw.get_album(id)
   albumAPI.nb_disk = albumAPI_gw.NUMBER_DISK
   albumAPI.copyright = albumAPI_gw.COPYRIGHT
+  albumAPI.release_date = albumAPI_gw.PHYSICAL_RELEASE_DATE
   albumAPI.root_artist = rootArtist
 
   // If the album is a single download as a track

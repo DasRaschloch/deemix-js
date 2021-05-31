@@ -157,6 +157,7 @@ class Track {
       }
 
       // Fill missing data
+      if (albumAPI_gw) this.album.addExtraAlbumGWData(albumAPI_gw)
       if (this.album.date && !this.date) this.date = this.album.date
       if (!this.album.discTotal) this.album.discTotal = albumAPI_gw.NUMBER_DISK || "1"
       if (!this.copyright) this.copyright = albumAPI_gw.COPYRIGHT
