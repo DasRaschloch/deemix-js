@@ -9,7 +9,7 @@ const { TrackFormats } = require('deezer-js')
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
-const { queue, each } = require('async')
+const { queue, each, eachOf } = require('async')
 
 const extensions = {
   [TrackFormats.FLAC]:    '.flac',
@@ -528,7 +528,7 @@ class Downloader {
     let errors = ""
     let searched = ""
 
-    await each(tracks, async (track, i) => {
+    await eachOf(tracks, async (track, i) => {
       if (!track) return
 
       if (track.error){
