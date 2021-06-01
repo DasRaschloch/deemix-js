@@ -87,7 +87,7 @@ class Track {
         timeout: 30000
       }).json()
     }catch (e){
-      console.error(e)
+      console.error("Track.retriveFilesizes: ", e.message)
       await new Promise(r => setTimeout(r, 2000)) // sleep(2000ms)
       return this.retriveFilesizes(dz)
     }

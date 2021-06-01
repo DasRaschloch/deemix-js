@@ -48,9 +48,21 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     }
     if (start != 0){
       let responseRange = response.headers["content-range"]
-      console.log(`${itemName} downloading range ${responseRange}`)
+      if (listener) listener.send('downloadInfo', {
+        uuid: downloadObject.uuid,
+        itemName,
+        state: "downloading",
+        alreadyStarted: true,
+        value: responseRange
+      })
     }else {
-      console.log(`${itemName} downloading ${complete} bytes`)
+      if (listener) listener.send('downloadInfo', {
+        uuid: downloadObject.uuid,
+        itemName,
+        state: "downloading",
+        alreadyStarted: false,
+        value: complete
+      })
     }
   }).on('data', function(chunk){
     if (downloadObject.isCanceled) {

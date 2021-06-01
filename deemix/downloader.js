@@ -82,6 +82,31 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     formats = {...formats_non_360}
   }
 
+  async function testBitrate(track, formatNumber, formatName){
+    let request
+    try {
+      request = got.get(
+        generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
+        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
+      ).on("response", (response)=>{
+        track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
+        track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
+        request.cancel()
+      }).on("error", (e)=>{
+        throw e
+      })
+
+      await request
+    } catch (e){
+      if (e.isCanceled) { return formatNumber }
+      if (e instanceof got.ReadError || e instanceof got.TimeoutError){
+        return await testBitrate(track, formatNumber, formatName)
+      }
+      console.trace(e)
+      throw e
+    }
+  }
+
   for (let i = 0; i < Object.keys(formats).length; i++){
     let formatNumber = Object.keys(formats).reverse()[i]
     let formatName = formats[formatNumber]
@@ -90,25 +115,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     if (Object.keys(track.filesizes).includes(`FILESIZE_${formatName}`)){
       if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
       if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
-        let request
-        try {
-          request = got.get(
-            generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
-            { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
-          ).on("response", (response)=>{
-            track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
-            track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
-            request.cancel()
-          }).on("error", (e)=>{
-            throw e
-          })
-
-          await request
-        } catch (e){
-          if (e.isCanceled) { return formatNumber }
-          console.error(e)
-          throw e
-        }
+        return await testBitrate(track, formatNumber, formatName)
       }
     }
 
@@ -145,6 +152,16 @@ class Downloader {
     this.extrasPath = null
     this.playlistCovername = null
     this.playlistURLs = []
+  }
+
+  log(itemName, state){
+    if (this.listener)
+      this.listener.send('downloadInfo', { uuid: this.downloadObject.uuid, itemName, state })
+  }
+
+  warn(itemName, state, solution){
+    if (this.listener)
+      this.listener.send('downloadWarn', { uuid: this.downloadObject.uuid, itemName, state , solution })
   }
 
   async start(){
@@ -198,7 +215,7 @@ class Downloader {
     // Generate track object
     if (!track){
       track = new Track()
-      console.log(`${itemName} Getting tags`)
+      this.log(itemName, "getTags")
       try{
         await track.parseData(
           this.dz,
@@ -212,9 +229,10 @@ class Downloader {
       } catch (e){
         if (e.name === "AlbumDoesntExists") { throw new DownloadFailed('albumDoesntExists') }
         if (e.name === "MD5NotFound") { throw new DownloadFailed('notLoggedIn') }
-        console.error(e)
+        console.trace(e)
         throw e
       }
+      this.log(itemName, "gotTags")
     }
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
 
@@ -224,7 +242,7 @@ class Downloader {
     if (track.MD5 === "") throw new DownloadFailed("notEncoded", track)
 
     // Check the target bitrate
-    console.log(`${itemName} Getting bitrate`)
+    this.log(itemName, "getBitrate")
     let selectedFormat
     try{
       selectedFormat = await getPreferredBitrate(
@@ -236,11 +254,12 @@ class Downloader {
     }catch (e){
       if (e.name === "PreferredBitrateNotFound") { throw new DownloadFailed("wrongBitrate", track) }
       if (e.name === "TrackNot360") { throw new DownloadFailed("no360RA") }
-      console.error(e)
+      console.trace(e)
       throw e
     }
     track.bitrate = selectedFormat
     track.album.bitrate = selectedFormat
+    this.log(itemName, "gotBitrate")
 
     // Apply Settings
     track.applySettings(this.settings)
@@ -273,8 +292,9 @@ class Downloader {
     track.album.embeddedCoverPath = `${TEMPDIR}/${track.album.isPlaylist ? 'pl'+track.playlist.id : 'alb'+track.album.id}_${this.settings.embeddedArtworkSize}${ext}`
 
     // Download and cache the coverart
+    this.log(itemName, "getAlbumArt")
     track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
-    console.log(`${itemName} Albumart downloaded`)
+    this.log(itemName, "gotAlbumArt")
 
     // Save local album art
     if (coverPath){
@@ -366,7 +386,6 @@ class Downloader {
 
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
-      console.log(`${itemName} Downloading`)
       track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
       let stream = fs.createWriteStream(writepath)
       try {
@@ -376,20 +395,22 @@ class Downloader {
         if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
         throw e
       }
+      this.log(itemName, "downloaded")
     } else {
-      console.log(`${itemName} Skipping track as it's already downloaded`)
+      this.log(itemName, "alreadyDownloaded")
       this.downloadObject.completeTrackProgress(this.listener)
     }
 
     // Adding tags
     if (!trackAlreadyDownloaded || [OverwriteOption.ONLY_TAGS, OverwriteOption.OVERWRITE].includes(this.settings.overwriteFile) && !track.local){
-      console.log(`${itemName} Tagging file`)
+      this.log(itemName, "tagging")
       if (extension == '.mp3'){
         tagID3(writepath, track, this.settings.tags)
         if (this.settings.tags.saveID3v1) tagID3v1(writepath, track, this.settings.tags)
       } else if (extension == '.flac'){
         tagFLAC(writepath, track, this.settings.tags)
       }
+      this.log(itemName, "tagged")
     }
 
     if (track.searched) returnData.searched = true
@@ -431,14 +452,14 @@ class Downloader {
         if (e.track){
           let track = e.track
           if (track.fallbackID != 0){
-            console.warn(`${itemName} ${e.message} Using fallback id.`)
+            this.warn(itemName, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
             track.parseEssentialData(newTrack)
             track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
           }
           if (!track.searched && this.settings.fallbackSearch){
-            console.warn(`${itemName} ${e.message} Searching for alternative.`)
+            this.warn(itemName, e.errid, 'search')
             let searchedID = this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
@@ -460,14 +481,12 @@ class Downloader {
           e.errid += "NoAlternative"
           e.message = errorMessages[e.errid]
         }
-        console.error(`${itemName} ${e.message}`)
         result = {error:{
           message: e.message,
           errid: e.errid,
           data: tempTrack
         }}
       } else if (! (e instanceof DownloadCanceled)){
-        console.error(`${itemName} ${e.message}`)
         console.trace(e)
         result = {error:{
           message: e.message,

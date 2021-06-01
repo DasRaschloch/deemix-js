@@ -18,7 +18,6 @@ async function getAccessToken(email, password){
     },
     headers: {"User-Agent": USER_AGENT_HEADER}
   }).json()
-  console.log(response)
   return response.access_token
 }
 

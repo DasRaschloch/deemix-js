@@ -292,6 +292,7 @@ class Spotify extends Plugin {
     downloadObject.collection.tracks_gw = collection
     downloadObject.size = collection.length
     downloadObject = new Collection(downloadObject.toDict())
+    if (listener) listener.send("finishConversion", downloadObject.getSlimmedDict())
 
     fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
     return downloadObject
