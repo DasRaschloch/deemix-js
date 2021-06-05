@@ -12,24 +12,25 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
     try {
       trackAPI = await dz.api.get_track(id)
     } catch (e){
-      console.error(e)
-      throw new GenerationError(e)
+      console.trace(e)
+      throw new GenerationError(`https://deezer.com/track/${id}`, e.message)
     }
 
     if (trackAPI.id && trackAPI.title){
       id = trackAPI.id
     } else {
-      throw new ISRCnotOnDeezer()
+      throw new ISRCnotOnDeezer(`https://deezer.com/track/${id}`)
     }
   }
+  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/track/${id}`)
 
   // Get essential track info
   let trackAPI_gw
   try {
     trackAPI_gw = await dz.gw.get_track_with_fallback(id)
   } catch (e){
-    console.error(e)
-    throw new GenerationError(e)
+    console.trace(e)
+    throw new GenerationError(`https://deezer.com/track/${id}`, e.message)
   }
 
   let title = trackAPI_gw.SNG_TITLE.trim()
@@ -60,11 +61,12 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   try{
     albumAPI = await dz.api.get_album(id)
   } catch (e){
-    console.error(e)
-    throw new GenerationError(e)
+    console.trace(e)
+    throw new GenerationError(`https://deezer.com/album/${id}`, e.message)
   }
 
   if (String(id).startsWith('upc')) { id = albumAPI['id'] }
+  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/album/${id}`)
 
   // Get extra info about album
   // This saves extra api calls when downloading
@@ -117,11 +119,12 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
 
 async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracksAPI){
   if (!playlistAPI){
+    if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/playlist/${id}`)
     // Get essential playlist info
     try{
       playlistAPI = await dz.api.get_playlist(id)
     }catch (e){
-      console.error(e)
+      console.trace(e)
       playlistAPI = null
     }
     // Fallback to gw api if the playlist is private
@@ -130,13 +133,13 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
         let userPlaylist = await dz.gw.get_playlist_page(id)
         playlistAPI = map_user_playlist(userPlaylist['DATA'])
       }catch (e){
-        console.error(e)
-        throw new GenerationError(e)
+        console.trace(e)
+        throw new GenerationError(`https://deezer.com/playlist/${id}`, e.message)
       }
     }
     // Check if private playlist and owner
     if (!playlistAPI.public && playlistAPI.creator.id != dz.current_user.id){
-      throw new NotYourPrivatePlaylist()
+      throw new NotYourPrivatePlaylist(`https://deezer.com/playlist/${id}`)
     }
   }
 
@@ -175,13 +178,14 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
 }
 
 async function generateArtistItem(dz, id, bitrate, listener){
+  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}`)
   // Get essential artist info
   let artistAPI
   try{
     artistAPI = await dz.api.get_artist(id)
   }catch (e){
-    console.error(e)
-    throw new GenerationError(e)
+    console.trace(e)
+    throw new GenerationError(`https://deezer.com/artist/${id}`, e.message)
   }
 
   const rootArtist = {
@@ -208,13 +212,14 @@ async function generateArtistItem(dz, id, bitrate, listener){
 }
 
 async function generateArtistDiscographyItem(dz, id, bitrate, listener){
+  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}/discography`)
   // Get essential artist info
   let artistAPI
   try{
     artistAPI = await dz.api.get_artist(id)
   }catch (e){
-    console.error(e)
-    throw new GenerationError(e)
+    console.trace(e)
+    throw new GenerationError(`https://deezer.com/artist/${id}/discography`, e.message)
   }
 
   const rootArtist = {
@@ -244,13 +249,14 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
 }
 
 async function generateArtistTopItem(dz, id, bitrate){
+  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}/top_track`)
   // Get essential artist info
   let artistAPI
   try{
     artistAPI = dz.api.get_artist(id)
   }catch (e){
-    console.error(e)
-    throw new GenerationError(e)
+    console.trace(e)
+    throw new GenerationError(`https://deezer.com/artist/${id}/top_track`, e.message)
   }
 
   // Emulate the creation of a playlist
@@ -288,37 +294,66 @@ async function generateArtistTopItem(dz, id, bitrate){
 }
 
 class GenerationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "GenerationError";
+  constructor(link, message) {
+    super(message)
+    this.link = link
+    this.name = "GenerationError"
   }
 }
 
 class ISRCnotOnDeezer extends GenerationError {
-  constructor(message) {
-    super(message);
-    this.name = "ISRCnotOnDeezer";
+  constructor(link) {
+    super(link, "Track ISRC is not available on deezer")
+    this.name = "ISRCnotOnDeezer"
+    this.errid = "ISRCnotOnDeezer"
   }
 }
 
 class NotYourPrivatePlaylist extends GenerationError {
-  constructor(message) {
-    super(message);
-    this.name = "NotYourPrivatePlaylist";
+  constructor(link) {
+    super(link, "You can't download others private playlists.")
+    this.name = "NotYourPrivatePlaylist"
+    this.errid = "notYourPrivatePlaylist"
   }
 }
 
 class TrackNotOnDeezer extends GenerationError {
-  constructor(message) {
-    super(message);
-    this.name = "TrackNotOnDeezer";
+  constructor(link) {
+    super(link, "Track not found on deezer!")
+    this.name = "TrackNotOnDeezer"
+    this.errid = "trackNotOnDeezer"
   }
 }
 
 class AlbumNotOnDeezer extends GenerationError {
-  constructor(message) {
-    super(message);
-    this.name = "AlbumNotOnDeezer";
+  constructor(link) {
+    super(link, "Album not found on deezer!")
+    this.name = "AlbumNotOnDeezer"
+    this.errid = "albumNotOnDeezer"
+  }
+}
+
+class InvalidID extends GenerationError {
+  constructor(link) {
+    super(link, "Link ID is invalid!")
+    this.name = "InvalidID"
+    this.errid = "invalidID"
+  }
+}
+
+class LinkNotSupported extends GenerationError {
+  constructor(link) {
+    super(link, "Link is not supported.")
+    this.name = "LinkNotSupported"
+    this.errid = "unsupportedURL"
+  }
+}
+
+class LinkNotRecognized extends GenerationError {
+  constructor(link) {
+    super(link, "Link is not recognized.")
+    this.name = "LinkNotRecognized"
+    this.errid = "invalidURL"
   }
 }
 
@@ -334,5 +369,8 @@ module.exports = {
   ISRCnotOnDeezer,
   NotYourPrivatePlaylist,
   TrackNotOnDeezer,
-  AlbumNotOnDeezer
+  AlbumNotOnDeezer,
+  InvalidID,
+  LinkNotSupported,
+  LinkNotRecognized
 }

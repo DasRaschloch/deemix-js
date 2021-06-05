@@ -4,7 +4,8 @@ const {
   generateTrackItem,
   generateAlbumItem,
   TrackNotOnDeezer,
-  AlbumNotOnDeezer
+  AlbumNotOnDeezer,
+  InvalidID
 } = require('../itemgen.js')
 const { Convertable, Collection } = require('../types/DownloadObjects.js')
 const { sep } = require('path')
@@ -83,7 +84,7 @@ class Spotify extends Plugin {
     if (track_id !== "0"){
       return generateTrackItem(dz, track_id, bitrate, trackAPI)
     } else {
-      throw new TrackNotOnDeezer
+      throw new TrackNotOnDeezer(`https://open.spotify.com/track/${link_id}`)
     }
   }
 
@@ -93,7 +94,7 @@ class Spotify extends Plugin {
     if (album_id !== "0"){
       return generateAlbumItem(dz, album_id, bitrate)
     } else {
-      throw new AlbumNotOnDeezer
+      throw new AlbumNotOnDeezer(`https://open.spotify.com/album/${link_id}`)
     }
   }
 
@@ -155,7 +156,12 @@ class Spotify extends Plugin {
       if (cache.tracks[track_id]){
         cachedTrack = cache.tracks[track_id]
       } else {
-        cachedTrack = await this.sp.getTrack(track_id)
+        try{
+          cachedTrack = await this.sp.getTrack(track_id)
+        } catch (e){
+          if (e.body.error.message === "invalid id") throw new InvalidID(`https://open.spotify.com/track/${track_id}`)
+          throw e
+        }
         cachedTrack = cachedTrack.body
       }
     }
@@ -195,7 +201,12 @@ class Spotify extends Plugin {
     if (cache.albums[album_id]){
       cachedAlbum = cache.albums[album_id]
     } else {
-      cachedAlbum = await this.sp.getAlbum(album_id)
+      try{
+        cachedAlbum = await this.sp.getAlbum(album_id)
+      } catch (e){
+        if (e.body.error.message === "invalid id") throw new InvalidID(`https://open.spotify.com/album/${album_id}`)
+        throw e
+      }
       cachedAlbum = cachedAlbum.body
     }
     let dz_id = "0"
@@ -247,7 +258,12 @@ class Spotify extends Plugin {
         if (cache.tracks[track.id].isrc) trackAPI = await dz.api.get_track_by_ISRC(cache.tracks[track.id].isrc)
       } else {
         let isrc
-        [dz_id, trackAPI, isrc] = await this.convertTrack(dz, "0", settings.fallbackSearch, track)
+        try{
+          [dz_id, trackAPI, isrc] = await this.convertTrack(dz, "0", settings.fallbackSearch, track)
+        }catch (e){
+          console.warn(e.message)
+        }
+
         cache.tracks[track.id] = {
           id: dz_id,
           isrc

@@ -5,7 +5,9 @@ const {
   generatePlaylistItem,
   generateArtistItem,
   generateArtistDiscographyItem,
-  generateArtistTopItem
+  generateArtistTopItem,
+  LinkNotSupported,
+  LinkNotRecognized
 } = require('./itemgen.js')
 
 async function parseLink(link){
@@ -58,7 +60,8 @@ async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
       item = await currentPlugin.generateDownloadObject(dz, link, bitrate, listener)
       if (item) break
     }
-    return item
+    if (item) return item
+    throw new LinkNotRecognized(link)
   }
 
   switch (link_type) {
@@ -74,6 +77,8 @@ async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
       return generateArtistDiscographyItem(dz, link_id, bitrate, listener)
     case 'artist_top':
       return generateArtistTopItem(dz, link_id, bitrate)
+    default:
+      throw new LinkNotSupported(link)
   }
 }
 
