@@ -39,7 +39,7 @@ function tagID3(path, track, save){
 
   if (save.trackNumber){
     let trackNumber = String(track.trackNumber)
-    if (save.trackTotal) trackNumber += `/${track.album.discTotal}`
+    if (save.trackTotal) trackNumber += `/${track.album.trackTotal}`
     tag.setFrame('TRCK', trackNumber)
   }
   if (save.discNumber){
