@@ -22,7 +22,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
       throw new ISRCnotOnDeezer(`https://deezer.com/track/${id}`)
     }
   }
-  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/track/${id}`)
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/track/${id}`)
 
   // Get essential track info
   let trackAPI_gw
@@ -66,7 +66,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   }
 
   if (String(id).startsWith('upc')) { id = albumAPI['id'] }
-  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/album/${id}`)
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/album/${id}`)
 
   // Get extra info about album
   // This saves extra api calls when downloading
@@ -119,7 +119,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
 
 async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracksAPI){
   if (!playlistAPI){
-    if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/playlist/${id}`)
+    if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/playlist/${id}`)
     // Get essential playlist info
     try{
       playlistAPI = await dz.api.get_playlist(id)
@@ -178,7 +178,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
 }
 
 async function generateArtistItem(dz, id, bitrate, listener){
-  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}`)
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}`)
   // Get essential artist info
   let artistAPI
   try{
@@ -212,7 +212,7 @@ async function generateArtistItem(dz, id, bitrate, listener){
 }
 
 async function generateArtistDiscographyItem(dz, id, bitrate, listener){
-  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}/discography`)
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}/discography`)
   // Get essential artist info
   let artistAPI
   try{
@@ -249,7 +249,7 @@ async function generateArtistDiscographyItem(dz, id, bitrate, listener){
 }
 
 async function generateArtistTopItem(dz, id, bitrate){
-  if (!Number.isInteger(id)) throw new InvalidID(`https://deezer.com/artist/${id}/top_track`)
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}/top_track`)
   // Get essential artist info
   let artistAPI
   try{
