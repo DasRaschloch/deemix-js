@@ -460,9 +460,9 @@ class Downloader {
           }
           if (!track.searched && this.settings.fallbackSearch){
             this.warn(itemName, e.errid, 'search')
-            let searchedID = this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
+            let searchedID = await this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
             if (searchedID != "0"){
-              let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
+              let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
               track.parseEssentialData(newTrack)
               track.retriveFilesizes(this.dz)
               track.searched = true
