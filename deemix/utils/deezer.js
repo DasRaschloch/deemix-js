@@ -9,7 +9,7 @@ const CLIENT_SECRET = "fb0bec7ccc063dab0417eb7b0d847f34"
 async function getAccessToken(email, password){
   password = _md5(password, 'utf8')
   const hash = _md5([CLIENT_ID, email, password, CLIENT_SECRET].join(''), 'utf8')
-  let response = await got.get(`https://api.deezer.com/auth/token`,{
+  let response = await got.get("https://api.deezer.com/auth/token",{
     searchParams: {
       app_id: CLIENT_ID,
       login: email,

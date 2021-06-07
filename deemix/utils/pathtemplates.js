@@ -56,7 +56,6 @@ function pad(num, max_val, settings) {
 }
 
 function generatePath(track, downloadObject, settings){
-
   let filenameTemplate = "%artist% - %title%";
   let singleTrack = false
   if (downloadObject.type === "track"){

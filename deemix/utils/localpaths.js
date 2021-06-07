@@ -8,6 +8,7 @@ let userdata = ""
 let musicdata = ""
 
 function checkPath(path){
+  if (path === "") return ""
   if (!fs.existsSync(path)) return ""
   if (!canWrite(path)) return ""
   return path
@@ -31,6 +32,7 @@ function getConfigFolder(){
     userdata = `${homedata}${sep}.config${sep}`
     userdata = checkPath(userdata)
   }
+
   if (userdata === "") userdata = `${process.cwd()}${sep}config${sep}`
   else userdata += `deemix${sep}`
 

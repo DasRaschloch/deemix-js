@@ -78,11 +78,9 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
 
   // If the album is a single download as a track
   if (albumAPI.nb_tracks == 1){
-    if (albumAPI.tracks.data.length){
+    if (albumAPI.tracks.data.length)
       return generateTrackItem(dz, albumAPI.tracks.data[0].id, bitrate, null, albumAPI)
-    } else {
-      throw new GenerationError(`https://deezer.com/album/${id}`, "Single has no tracks.")
-    }
+    throw new GenerationError(`https://deezer.com/album/${id}`, "Single has no tracks.")
   }
 
   let tracksArray = await dz.gw.get_album_tracks(id)

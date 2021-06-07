@@ -14,7 +14,7 @@ class Album {
     this.artist = {"Main": []}
     this.artists = []
     this.mainArtist = null
-    this.date = null
+    this.date = new Date()
     this.dateString = ""
     this.trackTotal = "0"
     this.discTotal = "0"
@@ -89,7 +89,6 @@ class Album {
     this.label = albumAPI.label || this.label
     this.explicit = Boolean(albumAPI.explicit_lyrics || false)
     if (albumAPI.release_date){
-      this.date = new Date()
       this.date.year = albumAPI.release_date.slice(0,4)
       this.date.month = albumAPI.release_date.slice(5,7)
       this.date.day = albumAPI.release_date.slice(8,10)
@@ -117,7 +116,8 @@ class Album {
     this.title = albumAPI_gw.ALB_TITLE
     this.mainArtist = new Artist(
       albumAPI_gw.ART_ID,
-      albumAPI_gw.ART_NAME
+      albumAPI_gw.ART_NAME,
+      "Main"
     )
 
     this.artists = [albumAPI_gw.ART_NAME]
@@ -136,7 +136,6 @@ class Album {
       this.pic.md5 = albumAPI_gw.ALB_PICTURE
     }
     if (albumAPI_gw.PHYSICAL_RELEASE_DATE){
-      this.date = new Date()
       this.date.year = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
       this.date.month = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
       this.date.day = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)

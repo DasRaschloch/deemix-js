@@ -9,7 +9,7 @@ const { TrackFormats } = require('deezer-js')
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
-const { queue, each, eachOf } = require('async')
+const { queue, each } = require('async')
 const { exec } = require("child_process")
 
 const extensions = {
@@ -26,7 +26,7 @@ const extensions = {
 const TEMPDIR = tmpdir()+`/deemix-imgs`
 fs.mkdirSync(TEMPDIR, { recursive: true })
 
-async function downloadImage(url, path, overwrite){
+async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRITE){
   if (fs.existsSync(path) && ![OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].includes(overwrite)) return path
 
   const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000})
@@ -42,7 +42,7 @@ async function downloadImage(url, path, overwrite){
         let pictureURL = url.slice(urlBase.length)
         let pictureSize = parseInt(pictureURL.slice(0, pictureURL.indexOf('x')))
         if (pictureSize > 1200)
-          return downloadImage(urlBase+pictureURL.replace(`${pictureSize}x${pictureSize}`, '1200x1200'))
+          return downloadImage(urlBase+pictureURL.replace(`${pictureSize}x${pictureSize}`, '1200x1200'), path, overwrite)
       }
       return null
     }
@@ -102,6 +102,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
       if (e instanceof got.ReadError || e instanceof got.TimeoutError){
         return await testBitrate(track, formatNumber, formatName)
       }
+      if (e instanceof got.HTTPError) return null
       console.trace(e)
       throw e
     }
@@ -115,7 +116,8 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     if (Object.keys(track.filesizes).includes(`FILESIZE_${formatName}`)){
       if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
       if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
-        return await testBitrate(track, formatNumber, formatName)
+        let testedBitrate = await testBitrate(track, formatNumber, formatName)
+        if (testedBitrate) return testedBitrate
       }
     }
 
@@ -154,53 +156,54 @@ class Downloader {
     this.playlistURLs = []
   }
 
-  log(itemName, state){
+  log(data, state){
     if (this.listener)
-      this.listener.send('downloadInfo', { uuid: this.downloadObject.uuid, itemName, state })
+      this.listener.send('downloadInfo', { uuid: this.downloadObject.uuid, data, state })
   }
 
-  warn(itemName, state, solution){
+  warn(data, state, solution){
     if (this.listener)
-      this.listener.send('downloadWarn', { uuid: this.downloadObject.uuid, itemName, state , solution })
+      this.listener.send('downloadWarn', { uuid: this.downloadObject.uuid, data, state , solution })
   }
 
   async start(){
-    if (!this.downloadObject.isCanceled){
-      if (this.downloadObject.__type__ === "Single"){
-        let track = await this.downloadWrapper({
-          trackAPI_gw: this.downloadObject.single.trackAPI_gw,
-          trackAPI: this.downloadObject.single.trackAPI,
-          albumAPI: this.downloadObject.single.albumAPI
-        })
-        await this.afterDownloadSingle(track)
-      } else if (this.downloadObject.__type__ === "Collection") {
-        let tracks = []
-
-        let q = queue(async (data) => {
-          let {track, pos} = data
-          tracks[pos] = await this.downloadWrapper({
-            trackAPI_gw: track,
-            albumAPI: this.downloadObject.collection.albumAPI,
-            playlistAPI: this.downloadObject.collection.playlistAPI
-          })
-        }, this.settings.queueConcurrency)
-
-        this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
-          q.push({track, pos})
-        })
-
-        await q.drain()
-        await this.afterDownloadCollection(tracks)
+    if (this.downloadObject.isCanceled){
+      if (this.listener){
+        this.listener.send('currentItemCancelled', this.downloadObject.uuid)
+        this.listener.send("removedFromQueue", this.downloadObject.uuid)
       }
+      return
+    }
+
+    if (this.downloadObject.__type__ === "Single"){
+      let track = await this.downloadWrapper({
+        trackAPI_gw: this.downloadObject.single.trackAPI_gw,
+        trackAPI: this.downloadObject.single.trackAPI,
+        albumAPI: this.downloadObject.single.albumAPI
+      })
+      if (track) await this.afterDownloadSingle(track)
+    } else if (this.downloadObject.__type__ === "Collection") {
+      let tracks = []
+
+      let q = queue(async (data) => {
+        let {track, pos} = data
+        tracks[pos] = await this.downloadWrapper({
+          trackAPI_gw: track,
+          albumAPI: this.downloadObject.collection.albumAPI,
+          playlistAPI: this.downloadObject.collection.playlistAPI
+        })
+      }, this.settings.queueConcurrency)
+
+      this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
+        q.push({track, pos})
+      })
+
+      await q.drain()
+      await this.afterDownloadCollection(tracks)
     }
 
     if (this.listener){
-      if (this.downloadObject.isCanceled){
-        this.listener.send('currentItemCancelled', this.downloadObject.uuid)
-        this.listener.send("removedFromQueue", this.downloadObject.uuid)
-      } else {
-        this.listener.send("finishDownload", this.downloadObject.uuid)
-      }
+      this.listener.send("finishDownload", this.downloadObject.uuid)
     }
   }
 
@@ -210,12 +213,16 @@ class Downloader {
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
     if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
 
-    let itemName = `[${trackAPI_gw.ART_NAME} - ${trackAPI_gw.SNG_TITLE.trim()}]`
+    let itemData = {
+      id: trackAPI_gw.SNG_ID,
+      title: trackAPI_gw.SNG_TITLE.trim(),
+      artist: trackAPI_gw.ART_NAME
+    }
 
     // Generate track object
     if (!track){
       track = new Track()
-      this.log(itemName, "getTags")
+      this.log(itemData, "getTags")
       try{
         await track.parseData(
           this.dz,
@@ -232,17 +239,21 @@ class Downloader {
         console.trace(e)
         throw e
       }
-      this.log(itemName, "gotTags")
+      this.log(itemData, "gotTags")
     }
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
 
-    itemName = `[${track.mainArtist.name} - ${track.title}]`
+    itemData = {
+      id: track.id,
+      title: track.title,
+      artist: track.mainArtist.name
+    }
 
     // Check if the track is encoded
     if (track.MD5 === "") throw new DownloadFailed("notEncoded", track)
 
     // Check the target bitrate
-    this.log(itemName, "getBitrate")
+    this.log(itemData, "getBitrate")
     let selectedFormat
     try{
       selectedFormat = await getPreferredBitrate(
@@ -259,7 +270,7 @@ class Downloader {
     }
     track.bitrate = selectedFormat
     track.album.bitrate = selectedFormat
-    this.log(itemName, "gotBitrate")
+    this.log(itemData, "gotBitrate")
 
     // Apply Settings
     track.applySettings(this.settings)
@@ -292,9 +303,9 @@ class Downloader {
     track.album.embeddedCoverPath = `${TEMPDIR}/${track.album.isPlaylist ? 'pl'+track.playlist.id : 'alb'+track.album.id}_${this.settings.embeddedArtworkSize}${ext}`
 
     // Download and cache the coverart
-    this.log(itemName, "getAlbumArt")
+    this.log(itemData, "getAlbumArt")
     track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
-    this.log(itemName, "gotAlbumArt")
+    this.log(itemData, "gotAlbumArt")
 
     // Save local album art
     if (coverPath){
@@ -320,7 +331,7 @@ class Downloader {
         // Deezer doesn't support png artist images
         if (picFormat === 'jpg'){
           let extendedFormat = `${picFormat}-${this.settings.jpegImageQuality}`
-          let url = track.album.pic.getURL(this.settings.localArtworkSize, extendedFormat)
+          let url = track.album.mainArtist.pic.getURL(this.settings.localArtworkSize, extendedFormat)
           // Skip non deezer pictures at the wrong format
           if (track.album.mainArtist.pic.md5 == "") return
           returnData.artistURLs.push({url, ext: picFormat})
@@ -395,22 +406,22 @@ class Downloader {
         if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
         throw e
       }
-      this.log(itemName, "downloaded")
+      this.log(itemData, "downloaded")
     } else {
-      this.log(itemName, "alreadyDownloaded")
+      this.log(itemData, "alreadyDownloaded")
       this.downloadObject.completeTrackProgress(this.listener)
     }
 
     // Adding tags
     if (!trackAlreadyDownloaded || [OverwriteOption.ONLY_TAGS, OverwriteOption.OVERWRITE].includes(this.settings.overwriteFile) && !track.local){
-      this.log(itemName, "tagging")
+      this.log(itemData, "tagging")
       if (extension == '.mp3'){
         tagID3(writepath, track, this.settings.tags)
         if (this.settings.tags.saveID3v1) tagID3v1(writepath, track, this.settings.tags)
       } else if (extension == '.flac'){
         tagFLAC(writepath, track, this.settings.tags)
       }
-      this.log(itemName, "tagged")
+      this.log(itemData, "tagged")
     }
 
     if (track.searched) returnData.searched = true
@@ -424,26 +435,21 @@ class Downloader {
         extrasPath: String(this.extrasPath)
       })
     returnData.filename = writepath.slice(extrasPath.length+1)
-    returnData.data = {
-      id: track.id,
-      title: track.title,
-      artist: track.mainArtist.name
-    }
+    returnData.data = itemData
     return returnData
   }
 
   async downloadWrapper(extraData, track){
     const { trackAPI_gw } = extraData
     // Temp metadata to generate logs
-    let tempTrack = {
+    let itemData = {
       id: trackAPI_gw.SNG_ID,
       title: trackAPI_gw.SNG_TITLE.trim(),
       artist: trackAPI_gw.ART_NAME
     }
     if (trackAPI_gw.VERSION && trackAPI_gw.SNG_TITLE.includes(trackAPI_gw.VERSION))
-      tempTrack.title += ` ${trackAPI_gw.VERSION.trim()}`
+      itemData.title += ` ${trackAPI_gw.VERSION.trim()}`
 
-    let itemName = `[${tempTrack.artist} - ${tempTrack.title}]`
     let result
     try {
       result = await this.download(extraData, track)
@@ -452,14 +458,14 @@ class Downloader {
         if (e.track){
           let track = e.track
           if (track.fallbackID != 0){
-            this.warn(itemName, e.errid, 'fallback')
+            this.warn(itemData, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
             track.parseEssentialData(newTrack)
             track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
           }
           if (!track.searched && this.settings.fallbackSearch){
-            this.warn(itemName, e.errid, 'search')
+            this.warn(itemData, e.errid, 'search')
             let searchedID = await this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
@@ -484,13 +490,13 @@ class Downloader {
         result = {error:{
           message: e.message,
           errid: e.errid,
-          data: tempTrack
+          data: itemData
         }}
       } else if (! (e instanceof DownloadCanceled)){
         console.trace(e)
         result = {error:{
           message: e.message,
-          data: tempTrack
+          data: itemData
         }}
       }
     }
@@ -514,6 +520,7 @@ class Downloader {
   }
 
   async afterDownloadSingle(track){
+    if (!track) return
     if (!this.extrasPath) this.extrasPath = this.settings.downloadLocation
 
     // Save local album artwork
@@ -550,7 +557,8 @@ class Downloader {
     let errors = ""
     let searched = ""
 
-    await eachOf(tracks, async (track, i) => {
+    for (let i=0; i < tracks.length; i++){
+      let track = tracks[i]
       if (!track) return
 
       if (track.error){
@@ -574,7 +582,7 @@ class Downloader {
 
       // Save filename for playlist file
       playlist[i] = track.filename || ""
-    })
+    }
 
     // Create errors logfile
     if (this.settings.logErrors && errors != "")
@@ -633,14 +641,14 @@ class DownloadFailed extends DownloadError {
   }
 }
 
-class TrackNot360 extends Error {
+class TrackNot360 extends DownloadError {
   constructor() {
     super()
     this.name = "TrackNot360"
   }
 }
 
-class PreferredBitrateNotFound extends Error {
+class PreferredBitrateNotFound extends DownloadError {
   constructor() {
     super()
     this.name = "PreferredBitrateNotFound"

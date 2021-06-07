@@ -32,7 +32,7 @@ class Track {
     this.album = null
     this.trackNumber = "0"
     this.discNumber = "0"
-    this.date = null
+    this.date = new Date()
     this.lyrics = null
     this.bpm = 0
     this.contributors = {}
@@ -87,9 +87,8 @@ class Track {
         timeout: 30000
       }).json()
     }catch (e){
-      console.error("Track.retriveFilesizes: ", e.message)
       await new Promise(r => setTimeout(r, 2000)) // sleep(2000ms)
-      return this.retriveFilesizes(dz)
+      this.retriveFilesizes(dz)
     }
     if (result_json.error.length){ throw new TrackError(result_json.error) }
     const response = result_json.results
@@ -190,12 +189,11 @@ class Track {
         trackAPI_gw.ALB_PICTURE || "",
         "cover"
     )
-    this.mainArtist = new Artist(trackAPI_gw.ART_NAME)
+    this.mainArtist = new Artist("0", trackAPI_gw.ART_NAME, "Main")
     this.artists = [trackAPI_gw.ART_NAME]
     this.artist = {
         'Main': [trackAPI_gw.ART_NAME]
     }
-    this.date = new Date()
     this.album.artist = this.artist
     this.album.artists = this.artists
     this.album.date = this.date
@@ -221,14 +219,15 @@ class Track {
     this.mainArtist = new Artist(
       trackAPI_gw.ART_ID,
       trackAPI_gw.ART_NAME,
+      "Main",
       trackAPI_gw.ART_PICTRUE
     )
 
     if (trackAPI_gw.PHYSICAL_RELEASE_DATE){
-      const day = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
-      const month = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
-      const year = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
-      this.date = new Date(day, month, year)
+      this.date.day = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
+      this.date.month = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
+      this.date.year = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
+      this.date.fixDayMonth()
     }
   }
 
@@ -339,6 +338,7 @@ class Track {
           this.artist[art_type][i] = changeCase(artist, settings.artistCasing)
         })
       })
+      this.generateMainFeatStrings()
     }
 
     // Generate artist tag

@@ -34,7 +34,11 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   let chunkLength = start
   let complete = 0
 
-  let itemName = `[${track.mainArtist.name} - ${track.title}]`
+  let itemData = {
+    id: track.id,
+    title: track.title,
+    artist: track.mainArtist.name
+  }
   let error = ''
 
   let request = got.stream(track.downloadURL, {
@@ -50,7 +54,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
       let responseRange = response.headers["content-range"]
       if (listener) listener.send('downloadInfo', {
         uuid: downloadObject.uuid,
-        itemName,
+        data: itemData,
         state: "downloading",
         alreadyStarted: true,
         value: responseRange
@@ -58,7 +62,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     }else {
       if (listener) listener.send('downloadInfo', {
         uuid: downloadObject.uuid,
-        itemName,
+        data: itemData,
         state: "downloading",
         alreadyStarted: false,
         value: complete
@@ -100,8 +104,8 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
 }
 
 class DownloadEmpty extends Error {
-  constructor(message) {
-    super(message);
+  constructor() {
+    super()
     this.name = "DownloadEmpty"
   }
 }
