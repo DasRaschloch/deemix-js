@@ -8,11 +8,13 @@ function _md5 (data, type = 'binary') {
 
 function _ecbCrypt (key, data) {
   let cipher = crypto.createCipheriv("aes-128-ecb", Buffer.from(key), Buffer.from(""));
+  cipher.setAutoPadding(false)
   return Buffer.concat([cipher.update(data, 'binary'), cipher.final()]).toString("hex").toLowerCase();
 }
 
 function _ecbDecrypt (key, data) {
   let cipher = crypto.createDecipheriv("aes-128-ecb", Buffer.from(key), Buffer.from(""));
+  cipher.setAutoPadding(false)
   return Buffer.concat([cipher.update(data, 'binary'), cipher.final()]).toString("hex").toLowerCase();
 }
 
