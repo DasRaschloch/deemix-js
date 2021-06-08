@@ -1,4 +1,4 @@
-const Plugin = require('./plugin.js')
+const Plugin = require('./index.js')
 const { getConfigFolder } = require('../utils/localpaths.js')
 const {
   generateTrackItem,
@@ -353,7 +353,7 @@ class Spotify extends Plugin {
       fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
         ...this.credentials,
         ...this.settings
-      }))
+      }, null, 2))
     let settings = JSON.parse(fs.readFileSync(this.configFolder+'settings.json'))
     this.setSettings(settings)
     this.checkCredentials()
@@ -365,7 +365,7 @@ class Spotify extends Plugin {
     fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
       ...this.credentials,
       ...this.settings
-    }))
+    }, null, 2))
   }
 
   getSettings(){

@@ -104,7 +104,7 @@ function save(settings, configFolder){
   configFolder = configFolder || getConfigFolder()
   if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
 
-  fs.writeFileSync(configFolder+'config.json', JSON.stringify(settings))
+  fs.writeFileSync(configFolder+'config.json', JSON.stringify(settings, null, 2))
 }
 
 function load(configFolder){
