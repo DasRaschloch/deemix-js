@@ -18,6 +18,9 @@ class Spotify extends Plugin {
   constructor(configFolder = undefined){
     super()
     this.credentials = {clientId: "", clientSecret: ""}
+    this.settings = {
+      fallbackSearch: false
+    }
     this.enabled = false
     this.sp
     this.configFolder = configFolder || getConfigFolder()
@@ -28,9 +31,7 @@ class Spotify extends Plugin {
   setup(){
     fs.mkdirSync(this.configFolder, { recursive: true })
 
-    if (! fs.existsSync(this.configFolder+'credentials.json')) fs.writeFileSync(this.configFolder+'credentials.json', JSON.stringify(this.credentials))
-    this.credentials = JSON.parse(fs.readFileSync(this.configFolder+'credentials.json'))
-    this.checkCredentials()
+    this.loadSettings()
     return this
   }
 
@@ -79,21 +80,54 @@ class Spotify extends Plugin {
   }
 
   async generateTrackItem(dz, link_id, bitrate){
-    let [track_id, trackAPI] = await this.convertTrack(dz, link_id)
+    let cache = this.loadCache()
 
-    if (track_id !== "0"){
-      return generateTrackItem(dz, track_id, bitrate, trackAPI)
+    let cachedTrack
+    if (cache.tracks[link_id]){
+      cachedTrack = cache.tracks[link_id]
     } else {
-      throw new TrackNotOnDeezer(`https://open.spotify.com/track/${link_id}`)
+      cachedTrack = await this.getTrack(link_id)
+      cache.tracks[link_id] = cachedTrack
+      this.saveCache(cache)
     }
+
+    if (cachedTrack.isrc){
+      try { return generateTrackItem(dz, `isrc:${cachedTrack.isrc}`, bitrate) }
+      catch (e){ /* empty */ }
+    }
+    if (this.settings.fallbackSearch){
+      if (!cachedTrack.id || cachedTrack.id === "0"){
+        let trackID = await dz.api.get_track_id_from_metadata(
+          cachedTrack.data.artist,
+          cachedTrack.data.title,
+          cachedTrack.data.album
+        )
+        if (trackID !== "0"){
+          cachedTrack.id = trackID
+          cache.tracks[link_id] = cachedTrack
+          this.saveCache(cache)
+        }
+      }
+      if (cachedTrack.id !== "0") return generateTrackItem(dz, cachedTrack.id, bitrate)
+    }
+    throw new TrackNotOnDeezer(`https://open.spotify.com/track/${link_id}`)
   }
 
   async generateAlbumItem(dz, link_id, bitrate){
-    let album_id = await this.convertAlbum(dz, link_id)
+    let cache = this.loadCache()
 
-    if (album_id !== "0"){
-      return generateAlbumItem(dz, album_id, bitrate)
+    let cachedAlbum
+    if (cache.albums[link_id]){
+      cachedAlbum = cache.albums[link_id]
     } else {
+      cachedAlbum = await this.getAlbum(link_id)
+      cache.albums[link_id] = cachedAlbum
+      this.saveCache(cache)
+    }
+
+    try {
+      return generateAlbumItem(dz, `upc:${cachedAlbum.upc}`, bitrate)
+    } catch (e){
       throw new AlbumNotOnDeezer(`https://open.spotify.com/album/${link_id}`)
     }
   }
@@ -142,106 +176,57 @@ class Spotify extends Plugin {
     })
   }
 
-  async convertTrack(dz, track_id, fallbackSearch = false, cachedTrack = null){
+  async getTrack(track_id, spotifyTrack=null){
     if (!this.enabled) throw new Error("Spotify plugin not enabled")
-    let shouldSaveCache = false
-    let cache
-    if (!cachedTrack){
-      try {
-        cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
-      } catch {
-        cache = {tracks: {}, albums: {}}
-      }
-      shouldSaveCache = true
-      if (cache.tracks[track_id]){
-        cachedTrack = cache.tracks[track_id]
-      } else {
-        try{
-          cachedTrack = await this.sp.getTrack(track_id)
-        } catch (e){
-          if (e.body.error.message === "invalid id") throw new InvalidID(`https://open.spotify.com/track/${track_id}`)
-          throw e
-        }
-        cachedTrack = cachedTrack.body
-      }
+    let cachedTrack = {
+      isrc: null,
+      data: null
     }
 
-    let dz_id = "0"
-    let dz_track = null
-    let isrc = null
-    if (cachedTrack.external_ids && cachedTrack.external_ids.isrc){
-      isrc = cachedTrack.external_ids.isrc
-      dz_track = await dz.api.get_track_by_ISRC(isrc)
-      if (dz_track.title && dz_track.id) dz_id = dz_track.id
+    if (!spotifyTrack){
+      try{
+        spotifyTrack = await this.sp.getTrack(track_id)
+      } catch (e){
+        if (e.body.error.message === "invalid id") throw new InvalidID(`https://open.spotify.com/track/${track_id}`)
+        throw e
+      }
+      spotifyTrack = spotifyTrack.body
     }
-    if (dz_id === "0" && fallbackSearch){
-      dz_id = dz.api.get_track_id_from_metadata(
-        cachedTrack.artists[0].name,
-        cachedTrack.name,
-        cachedTrack.album.name
-      )
+    if (spotifyTrack.external_ids && spotifyTrack.external_ids.isrc) cachedTrack.isrc = spotifyTrack.external_ids.isrc
+    cachedTrack.data = {
+      title: spotifyTrack.name,
+      artist: spotifyTrack.artists[0].name,
+      album: spotifyTrack.album.name
     }
-
-    if (shouldSaveCache){
-      cache.tracks[track_id] = {id: dz_id, isrc: isrc}
-      fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
-    }
-    return [dz_id, dz_track, isrc]
+    return cachedTrack
   }
 
-  async convertAlbum(dz, album_id){
+  async getAlbum(album_id, spotifyAlbum=null){
     if (!this.enabled) throw new Error("Spotify plugin not enabled")
-    let cachedAlbum
-    let cache
-    try {
-      cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
-    } catch {
-      cache = {tracks: {}, albums: {}}
+    let cachedAlbum = {
+      upc: null,
+      data: null
     }
-    if (cache.albums[album_id]){
-      cachedAlbum = cache.albums[album_id]
-    } else {
+
+    if (!spotifyAlbum){
       try{
-        cachedAlbum = await this.sp.getAlbum(album_id)
+        spotifyAlbum = await this.sp.getAlbum(album_id)
       } catch (e){
         if (e.body.error.message === "invalid id") throw new InvalidID(`https://open.spotify.com/album/${album_id}`)
         throw e
       }
-      cachedAlbum = cachedAlbum.body
+      spotifyAlbum = spotifyAlbum.body
     }
-    let dz_id = "0"
-    let dz_album = null
-    let upc = null
-    if (cachedAlbum.external_ids && cachedAlbum.external_ids.upc){
-      upc = cachedAlbum.external_ids.upc
-      try {
-        dz_album = await dz.api.get_album_by_UPC(upc)
-      } catch (e){
-        dz_album = null
-      }
-      if (!dz_album){
-        upc = ""+parseInt(upc)
-        try {
-          dz_album = await dz.api.get_album_by_UPC(upc)
-        } catch (e) {
-          dz_album = null
-        }
-      }
-      if (dz_album && dz_album.title && dz_album.id) dz_id = dz_album.id
+    if (spotifyAlbum.external_ids && spotifyAlbum.external_ids.upc) cachedAlbum.upc = spotifyAlbum.external_ids.upc
+    cachedAlbum.data = {
+      title: spotifyAlbum.name,
+      artist: spotifyAlbum.artists[0].name
     }
-
-    cache.albums[album_id] = {id: dz_id, upc: upc}
-    fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(cache))
-    return dz_id
+    return cachedAlbum
   }
 
   async convert(dz, downloadObject, settings, listener = null){
-    let cache
-    try {
-      cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
-    } catch {
-      cache = {tracks: {}, albums: {}}
-    }
+    let cache = this.loadCache()
 
     let conversion = 0
     let conversionNext = 0
@@ -250,28 +235,41 @@ class Spotify extends Plugin {
     if (listener) listener.send("startConversion", downloadObject.uuid)
     let q = queue(async (data) => {
       let {track, pos} = data
-      if (downloadObject.cancel) return
+      if (downloadObject.isCanceled) return
 
-      let dz_id, trackAPI
+      let cachedTrack, trackAPI
       if (cache.tracks[track.id]){
-        dz_id = cache.tracks[track.id].id
-        if (cache.tracks[track.id].isrc) trackAPI = await dz.api.get_track_by_ISRC(cache.tracks[track.id].isrc)
+        cachedTrack = cache.tracks[track.id]
       } else {
-        let isrc
-        try{
-          [dz_id, trackAPI, isrc] = await this.convertTrack(dz, "0", settings.fallbackSearch, track)
-        }catch (e){
-          console.warn(e.message)
-        }
+        cachedTrack = await this.getTrack(track.id, track)
+        cache.tracks[track.id] = cachedTrack
+        this.saveCache(cache)
+      }
 
-        cache.tracks[track.id] = {
-          id: dz_id,
-          isrc
+      if (cachedTrack.isrc){
+        try {
+          trackAPI = await dz.api.get_track_by_ISRC(cachedTrack.isrc)
+          if (!trackAPI.id || !trackAPI.title) trackAPI = null
+        } catch { /* Empty */ }
+      }
+      if (this.settings.fallbackSearch && !trackAPI){
+        if (!cachedTrack.id || cachedTrack.id === "0"){
+          let trackID = await dz.api.get_track_id_from_metadata(
+            cachedTrack.data.artist,
+            cachedTrack.data.title,
+            cachedTrack.data.album
+          )
+          if (trackID !== "0"){
+            cachedTrack.id = trackID
+            cache.tracks[track.id] = cachedTrack
+            this.saveCache(cache)
+          }
         }
+        if (cachedTrack.id !== "0") trackAPI = await dz.api.get_track(cachedTrack.id)
       }
 
       let deezerTrack
-      if (String(dz_id) == "0"){
+      if (!trackAPI){
         deezerTrack = {
           SNG_ID: "0",
           SNG_TITLE: track.name,
@@ -285,12 +283,12 @@ class Spotify extends Plugin {
           ART_NAME: track.artists[0].name
         }
       } else {
-        deezerTrack = await dz.gw.get_track_with_fallback(dz_id)
+        deezerTrack = await dz.gw.get_track_with_fallback(trackAPI.id)
       }
-      if (trackAPI) deezerTrack._EXTRA_TRACK = trackAPI
-      deezerTrack.POSITION = pos
+      deezerTrack._EXTRA_TRACK = trackAPI
+      deezerTrack.POSITION = pos+1
       deezerTrack.SIZE = downloadObject.size
-      collection.push(deezerTrack)
+      collection[pos] = deezerTrack
 
       conversionNext += (1 / downloadObject.size) * 100
       if (Math.round(conversionNext) != conversion && Math.round(conversionNext) % 2 == 0){
@@ -300,7 +298,7 @@ class Spotify extends Plugin {
     }, settings.queueConcurrency)
 
     downloadObject.conversion_data.forEach((track, pos) => {
-      q.push({track, pos: pos+1})
+      q.push({track, pos: pos})
     });
 
     await q.drain()
@@ -315,9 +313,8 @@ class Spotify extends Plugin {
   }
 
   _convertPlaylistStructure(spotifyPlaylist){
-    let cover
+    let cover = null
     if (spotifyPlaylist.images.length) cover = spotifyPlaylist.images[0].url
-    else cover = null
 
     let deezerPlaylist = {
       checksum: spotifyPlaylist.snapshot_id,
@@ -352,6 +349,55 @@ class Spotify extends Plugin {
     return deezerPlaylist
   }
 
+  loadSettings(){
+    if (!fs.existsSync(this.configFolder+'settings.json'))
+      fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+        ...this.credentials,
+        ...this.settings
+      }))
+    let settings = JSON.parse(fs.readFileSync(this.configFolder+'settings.json'))
+    this.setSettings(settings)
+    this.checkCredentials()
+  }
+
+  saveSettings(newSettings){
+    if (newSettings) this.setSettings(newSettings)
+    this.checkCredentials()
+    fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+      ...this.credentials,
+      ...this.settings
+    }))
+  }
+
+  getSettings(){
+    return {
+      ...this.credentials,
+      ...this.settings
+    }
+  }
+
+  setSettings(newSettings){
+    this.credentials = { clientId: newSettings.clientId, clientSecret: newSettings.clientSecret }
+    let settings = {...newSettings}
+    delete settings.clientId
+    delete settings.clientSecret
+    this.settings = settings
+  }
+
+  loadCache(){
+    let cache
+    try {
+      cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
+    } catch {
+      cache = {tracks: {}, albums: {}}
+    }
+    return cache
+  }
+
+  saveCache(newCache){
+    fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(newCache))
+  }
+
   checkCredentials(){
     if (this.credentials.clientId === "" || this.credentials.clientSecret === ""){
       this.enabled = false
@@ -374,13 +420,12 @@ class Spotify extends Plugin {
     return this.credentials
   }
 
-  setCredentials(newCredentials){
-    newCredentials.clientId = newCredentials.clientId.trim()
-    newCredentials.clientSecret = newCredentials.clientSecret.trim()
+  setCredentials(clientId, clientSecret){
+    clientId = clientId.trim()
+    clientSecret = clientSecret.trim()
 
-    this.credentials = newCredentials
-    fs.writeFileSync(this.configFolder+'credentials.json', JSON.stringify(this.credentials))
-    this.checkCredentials()
+    this.credentials = {clientId, clientSecret}
+    this.saveSettings()
   }
 }
 
