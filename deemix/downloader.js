@@ -167,43 +167,42 @@ class Downloader {
   }
 
   async start(){
-    if (this.downloadObject.isCanceled){
-      if (this.listener){
-        this.listener.send('currentItemCancelled', this.downloadObject.uuid)
-        this.listener.send("removedFromQueue", this.downloadObject.uuid)
-      }
-      return
-    }
-
-    if (this.downloadObject.__type__ === "Single"){
-      let track = await this.downloadWrapper({
-        trackAPI_gw: this.downloadObject.single.trackAPI_gw,
-        trackAPI: this.downloadObject.single.trackAPI,
-        albumAPI: this.downloadObject.single.albumAPI
-      })
-      if (track) await this.afterDownloadSingle(track)
-    } else if (this.downloadObject.__type__ === "Collection") {
-      let tracks = []
-
-      let q = queue(async (data) => {
-        let {track, pos} = data
-        tracks[pos] = await this.downloadWrapper({
-          trackAPI_gw: track,
-          albumAPI: this.downloadObject.collection.albumAPI,
-          playlistAPI: this.downloadObject.collection.playlistAPI
+    if (!this.downloadObject.isCanceled){
+      if (this.downloadObject.__type__ === "Single"){
+        let track = await this.downloadWrapper({
+          trackAPI_gw: this.downloadObject.single.trackAPI_gw,
+          trackAPI: this.downloadObject.single.trackAPI,
+          albumAPI: this.downloadObject.single.albumAPI
         })
-      }, this.settings.queueConcurrency)
+        if (track) await this.afterDownloadSingle(track)
+      } else if (this.downloadObject.__type__ === "Collection") {
+        let tracks = []
 
-      this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
-        q.push({track, pos})
-      })
+        let q = queue(async (data) => {
+          let {track, pos} = data
+          tracks[pos] = await this.downloadWrapper({
+            trackAPI_gw: track,
+            albumAPI: this.downloadObject.collection.albumAPI,
+            playlistAPI: this.downloadObject.collection.playlistAPI
+          })
+        }, this.settings.queueConcurrency)
 
-      await q.drain()
-      await this.afterDownloadCollection(tracks)
+        this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
+          q.push({track, pos})
+        })
+
+        await q.drain()
+        await this.afterDownloadCollection(tracks)
+      }
     }
 
     if (this.listener){
-      this.listener.send("finishDownload", this.downloadObject.uuid)
+      if (this.downloadObject.isCanceled){
+        this.listener.send('currentItemCancelled', this.downloadObject.uuid)
+        this.listener.send("removedFromQueue", this.downloadObject.uuid)
+      } else {
+        this.listener.send("finishDownload", this.downloadObject.uuid)
+      }
     }
   }
 
