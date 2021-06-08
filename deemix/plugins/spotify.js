@@ -287,7 +287,6 @@ class Spotify extends Plugin {
       }
       deezerTrack._EXTRA_TRACK = trackAPI
       deezerTrack.POSITION = pos+1
-      deezerTrack.SIZE = downloadObject.size
       collection[pos] = deezerTrack
 
       conversionNext += (1 / downloadObject.size) * 100

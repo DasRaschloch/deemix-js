@@ -15,6 +15,7 @@ class IDownloadObject{
     this.files = obj.files || []
     this.progressNext = 0
     this.uuid = `${this.type}_${this.id}_${this.bitrate}`
+    this.isCanceled = false
     this.__type__ = null
   }
 

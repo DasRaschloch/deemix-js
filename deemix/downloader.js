@@ -209,6 +209,7 @@ class Downloader {
   async download(extraData, track){
     let returnData = {}
     const { trackAPI_gw, trackAPI, albumAPI, playlistAPI } = extraData
+    trackAPI_gw.SIZE = this.downloadObject.size
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
     if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
 
