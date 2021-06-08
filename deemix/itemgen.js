@@ -58,14 +58,31 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
 async function generateAlbumItem(dz, id, bitrate, rootArtist){
   // Get essential album info
   let albumAPI
-  try{
-    albumAPI = await dz.api.get_album(id)
-  } catch (e){
-    console.trace(e)
-    throw new GenerationError(`https://deezer.com/album/${id}`, e.message)
+  if (String(id).startsWith('upc')){
+    let upcs = [id.slice(4)]
+    upcs.push(parseInt(upcs[0])) // Try UPC without leading zeros as well
+    let lastError
+    await each(upcs, async (upc)=>{
+      try {
+        albumAPI = await dz.api.get_album(`upc:${upc}`)
+      } catch (e) {
+        lastError = e
+        albumAPI = null
+      }
+    })
+    if (!albumAPI){
+      console.trace(lastError)
+      throw new GenerationError(`https://deezer.com/album/${id}`, lastError.message)
+    }
+    id = albumAPI.id
+  } else {
+    try{
+      albumAPI = await dz.api.get_album(id)
+    } catch (e){
+      console.trace(e)
+      throw new GenerationError(`https://deezer.com/album/${id}`, e.message)
+    }
   }
-
-  if (String(id).startsWith('upc')) { id = albumAPI['id'] }
   if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/album/${id}`)
 
   // Get extra info about album
