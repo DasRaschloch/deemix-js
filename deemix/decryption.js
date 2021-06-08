@@ -7,7 +7,7 @@ function generateStreamPath(sngID, md5, mediaVersion, format){
   let urlPart = md5+"¤"+format+"¤"+sngID+"¤"+mediaVersion
   let md5val = _md5(urlPart)
   let step2 = md5val+"¤"+urlPart+"¤"
-  step2 += ('.' * (16 - (step2.length % 16)))
+  step2 += '.'.repeat(16 - (step2.length % 16))
   urlPart = _ecbCrypt('jo6aey6haid2Teih', step2)
   return urlPart
 }
