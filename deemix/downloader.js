@@ -98,7 +98,10 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
 
       await request
     } catch (e){
-      if (e.isCanceled) { return formatNumber }
+      if (e.isCanceled) {
+        if (track.filesizes[`FILESIZE_${formatName}`] == 0) return null
+        return formatNumber
+      }
       if (e instanceof got.ReadError || e instanceof got.TimeoutError){
         return await testBitrate(track, formatNumber, formatName)
       }
