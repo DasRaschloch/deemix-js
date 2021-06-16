@@ -10,7 +10,6 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "async": "^3.2.0",
-    "browser-id3-writer": "^4.4.0",
     "crypto": "^1.0.1",
     "deezer-js": "^0.0.8",
     "got": "^11.8.2",
