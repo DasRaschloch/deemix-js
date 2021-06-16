@@ -307,7 +307,7 @@ class Downloader {
 
     // Download and cache the coverart
     this.log(itemData, "getAlbumArt")
-    track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath, this.settings.overwriteFile)
+    track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
     this.log(itemData, "gotAlbumArt")
 
     // Save local album art
