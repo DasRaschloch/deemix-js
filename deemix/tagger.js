@@ -211,7 +211,8 @@ function tagFLAC(path, track, save){
   }
 
   if (save.cover && track.album.embeddedCoverPath){
-    flac.importPicture(track.album.embeddedCoverPath)
+    let picture = fs.readFileSync(track.album.embeddedCoverPath)
+    if (picture.length != 0) flac.importPicture(picture)
   }
 
   flac.save()
