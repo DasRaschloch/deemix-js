@@ -27,9 +27,13 @@ const TEMPDIR = tmpdir()+`/deemix-imgs`
 fs.mkdirSync(TEMPDIR, { recursive: true })
 
 async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRITE){
-  if (fs.existsSync(path) && ![OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].includes(overwrite)) return path
+  if (fs.existsSync(path) && ![OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH].includes(overwrite)){
+    let file = fs.readFileSync(path)
+    if (file.length != 0) return path
+    fs.unlinkSync(path)
+  }
 
-  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000})
+  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000, retry: 3})
   const fileWriterStream = fs.createWriteStream(path)
 
   try {
@@ -667,6 +671,7 @@ module.exports = {
   Downloader,
   DownloadError,
   DownloadFailed,
+  downloadImage,
   getPreferredBitrate,
   TrackNot360,
   PreferredBitrateNotFound
