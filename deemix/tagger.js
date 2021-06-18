@@ -78,7 +78,7 @@ function tagID3(path, track, save){
     language: 'XXX'
   })
 
-  if (save.syncedLyrics && track.lyrics.syncID3) tag.setFrame('SYLT', {
+  if (save.syncedLyrics && track.lyrics.syncID3.length !== 0) tag.setFrame('SYLT', {
     text: track.lyrics.syncID3,
     type: 1,
     timestampFormat: 2,
