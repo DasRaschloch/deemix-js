@@ -161,6 +161,8 @@ class Downloader {
     this.extrasPath = null
     this.playlistCovername = null
     this.playlistURLs = []
+
+    this.coverQueue = {}
   }
 
   log(data, state){
@@ -311,7 +313,10 @@ class Downloader {
 
     // Download and cache the coverart
     this.log(itemData, "getAlbumArt")
-    track.album.embeddedCoverPath = await downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
+    if (!this.coverQueue[track.album.embeddedCoverPath])
+      this.coverQueue[track.album.embeddedCoverPath] = downloadImage(track.album.embeddedCoverURL, track.album.embeddedCoverPath)
+    track.album.embeddedCoverPath = await this.coverQueue[track.album.embeddedCoverPath]
+    if (this.coverQueue[track.album.embeddedCoverPath]) delete this.coverQueue[track.album.embeddedCoverPath]
     this.log(itemData, "gotAlbumArt")
 
     // Save local album art
