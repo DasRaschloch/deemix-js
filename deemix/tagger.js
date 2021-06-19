@@ -114,12 +114,14 @@ function tagID3(path, track, save){
 
   if (save.cover && track.album.embeddedCoverPath){
     const coverArrayBuffer = fs.readFileSync(track.album.embeddedCoverPath)
-    tag.setFrame('APIC', {
-      type: 3,
-      data: coverArrayBuffer,
-      description: 'cover',
-      useUnicodeEncoding: save.coverDescriptionUTF8
-    })
+    if (coverArrayBuffer.length != 0){
+      tag.setFrame('APIC', {
+        type: 3,
+        data: coverArrayBuffer,
+        description: 'cover',
+        useUnicodeEncoding: save.coverDescriptionUTF8
+      })
+    }
   }
   tag.addTag()
 
