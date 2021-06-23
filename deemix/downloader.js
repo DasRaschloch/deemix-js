@@ -509,7 +509,9 @@ class Downloader {
           errid: e.errid,
           data: itemData
         }}
-      } else if (! (e instanceof DownloadCanceled)){
+      } else if (e instanceof DownloadCanceled){
+        return
+      } else {
         console.trace(e)
         result = {error:{
           message: e.message,
