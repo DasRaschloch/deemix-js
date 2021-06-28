@@ -478,7 +478,7 @@ class Downloader {
             this.warn(itemData, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
             track.parseEssentialData(newTrack)
-            track.retriveFilesizes(this.dz)
+            await track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
           }
           if (!track.searched && this.settings.fallbackSearch){
@@ -487,7 +487,7 @@ class Downloader {
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
               track.parseEssentialData(newTrack)
-              track.retriveFilesizes(this.dz)
+              await track.retriveFilesizes(this.dz)
               track.searched = true
               if (this.listener) this.listener.send('queueUpdate', {
                 uuid: this.downloadObject.uuid,

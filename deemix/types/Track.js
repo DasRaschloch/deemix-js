@@ -88,7 +88,7 @@ class Track {
       }).json()
     }catch (e){
       await new Promise(r => setTimeout(r, 2000)) // sleep(2000ms)
-      this.retriveFilesizes(dz)
+      return this.retriveFilesizes(dz)
     }
     if (result_json.error.length){ throw new TrackError(result_json.error) }
     const response = result_json.results
