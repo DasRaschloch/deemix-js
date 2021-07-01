@@ -98,7 +98,7 @@ class Album {
     this.discTotal = albumAPI.nb_disk || "1"
     this.copyright = albumAPI.copyright
 
-    if (this.pic.md5 == ""){
+    if (this.pic.md5 == "" && albumAPI.cover_small){
       // Getting album cover MD5
       // ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
       let alb_pic = albumAPI.cover_small
@@ -132,7 +132,7 @@ class Album {
   }
 
   addExtraAlbumGWData(albumAPI_gw){
-    if (this.pic.md5 == ""){
+    if (this.pic.md5 == "" && albumAPI_gw.ALB_PICTURE){
       this.pic.md5 = albumAPI_gw.ALB_PICTURE
     }
     if (albumAPI_gw.PHYSICAL_RELEASE_DATE){
