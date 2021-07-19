@@ -20,7 +20,7 @@ function reverseStreamPath(urlPart){
 
 function generateStreamURL(sngID, md5, mediaVersion, format){
   let urlPart = generateStreamPath(sngID, md5, mediaVersion, format)
-  return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/api/1/" + urlPart
+  return "https://cdns-proxy-" + md5[0] + ".dzcdn.net/api/1/" + urlPart
 }
 
 function reverseStreamURL(url){
