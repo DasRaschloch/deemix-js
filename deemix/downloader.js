@@ -1,6 +1,6 @@
 const { Track } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
-const { streamTrack, generateStreamURL, DownloadCanceled } = require('./decryption.js')
+const { streamTrack, generateCryptedStreamURL, DownloadCanceled } = require('./decryption.js')
 const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline, shellEscape } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
@@ -90,7 +90,7 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     let request
     try {
       request = got.get(
-        generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
+        generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
       ).on("response", (response)=>{
         track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
@@ -409,7 +409,7 @@ class Downloader {
 
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
-      track.downloadURL = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+      track.downloadURL = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
       let stream = fs.createWriteStream(writepath)
       try {
         await streamTrack(stream, track, 0, this.downloadObject, this.listener)

@@ -1,7 +1,8 @@
 const got = require('got')
-const {_md5, _ecbCrypt, _ecbDecrypt} = require('./utils/crypto.js')
+const {_md5, _ecbCrypt, _ecbDecrypt, generateBlowfishKey, decryptChunk} = require('./utils/crypto.js')
 
-const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
+const { USER_AGENT_HEADER } = require('./utils/index.js')
+const { pipeline } = require('stream/promises')
 
 function generateStreamPath(sngID, md5, mediaVersion, format){
   let urlPart = md5+"¤"+format+"¤"+sngID+"¤"+mediaVersion
@@ -16,6 +17,11 @@ function reverseStreamPath(urlPart){
   let step2 = _ecbDecrypt('jo6aey6haid2Teih', urlPart)
   let [, md5, format, sngID, mediaVersion] = step2.split("¤")
   return [sngID, md5, mediaVersion, format]
+}
+
+function generateCryptedStreamURL(sngID, md5, mediaVersion, format){
+  let urlPart = generateStreamPath(sngID, md5, mediaVersion, format)
+  return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart
 }
 
 function generateStreamURL(sngID, md5, mediaVersion, format){
@@ -33,6 +39,8 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   let headers = {'User-Agent': USER_AGENT_HEADER}
   let chunkLength = start
   let complete = 0
+  let isCryptedStream = track.downloadURL.includes("/mobile/")
+  let blowfishKey
 
   let itemData = {
     id: track.id,
@@ -40,6 +48,37 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     artist: track.mainArtist.name
   }
   let error = ''
+
+  if (isCryptedStream) blowfishKey = generateBlowfishKey(String(track.id))
+
+  async function* decrypter(source){
+    let modifiedStream = Buffer.alloc(0)
+    for await (let chunk of source){
+      if (!isCryptedStream){
+        yield chunk
+      } else {
+        modifiedStream = Buffer.concat([modifiedStream, chunk])
+        while (modifiedStream.length >= 2048 * 3){
+          let decryptedChunks = Buffer.alloc(0)
+          let decryptingChunks = modifiedStream.slice(0, 2048 * 3)
+          modifiedStream = modifiedStream.slice(2048 * 3)
+          if (decryptingChunks.length >= 2048){
+            decryptedChunks = decryptChunk(decryptingChunks.slice(0, 2048), blowfishKey)
+            decryptedChunks = Buffer.concat([decryptedChunks, decryptingChunks.slice(2048)])
+          }
+          yield decryptedChunks
+        }
+      }
+    }
+    if (isCryptedStream){
+      let decryptedChunks = Buffer.alloc(0)
+      if (modifiedStream.length >= 2048){
+        decryptedChunks = decryptChunk(modifiedStream.slice(0, 2048), blowfishKey)
+        decryptedChunks = Buffer.concat([decryptedChunks, modifiedStream.slice(2048)])
+      }
+      yield decryptedChunks
+    }
+  }
 
   let request = got.stream(track.downloadURL, {
     headers: headers,
@@ -89,7 +128,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   })
 
   try {
-    await pipeline(request, outputStream)
+    await pipeline(request, decrypter, outputStream)
   } catch (e){
     if (e instanceof got.ReadError || e instanceof got.TimeoutError){
       await streamTrack(outputStream, track, chunkLength, downloadObject, listener)
@@ -117,16 +156,10 @@ class DownloadCanceled extends Error {
   }
 }
 
-/*
-function generateCryptedStreamURL(sngID, md5, mediaVersion, format){
-  let urlPart = generateStreamPath(sngID, md5, mediaVersion, format)
-  return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart
-}
-*/
-
 module.exports = {
   generateStreamPath,
   generateStreamURL,
+  generateCryptedStreamURL,
   reverseStreamPath,
   reverseStreamURL,
   streamTrack,
