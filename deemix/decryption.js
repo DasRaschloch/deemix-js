@@ -1,8 +1,7 @@
 const got = require('got')
 const {_md5, _ecbCrypt, _ecbDecrypt, generateBlowfishKey, decryptChunk} = require('./utils/crypto.js')
 
-const { USER_AGENT_HEADER } = require('./utils/index.js')
-const { pipeline } = require('stream/promises')
+const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 
 function generateStreamPath(sngID, md5, mediaVersion, format){
   let urlPart = md5+"¤"+format+"¤"+sngID+"¤"+mediaVersion
