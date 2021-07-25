@@ -38,7 +38,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   let headers = {'User-Agent': USER_AGENT_HEADER}
   let chunkLength = start
   let complete = 0
-  let isCryptedStream = track.downloadURL.includes("/mobile/")
+  let isCryptedStream = track.downloadURL.includes("/mobile/") || track.downloadURL.includes("/media/")
   let blowfishKey
 
   let itemData = {
