@@ -1,4 +1,8 @@
 const crypto = require('crypto')
+let Blowfish
+try {
+  Blowfish = require('egoroof-blowfish')
+} catch (e) { /* empty */ }
 
 function _md5 (data, type = 'binary') {
   let md5sum = crypto.createHash('md5')
@@ -29,9 +33,18 @@ function generateBlowfishKey(trackId) {
 }
 
 function decryptChunk(chunk, blowFishKey){
-  var cipher = crypto.createDecipheriv('bf-cbc', blowFishKey, Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]))
-  cipher.setAutoPadding(false)
-  return Buffer.concat([cipher.update(chunk), cipher.final()])
+  let ciphers = crypto.getCiphers()
+  if (ciphers.includes('bf-cbc')){
+    let cipher = crypto.createDecipheriv('bf-cbc', blowFishKey, Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]))
+    cipher.setAutoPadding(false)
+    return Buffer.concat([cipher.update(chunk), cipher.final()])
+  }
+  if (Blowfish){
+    let cipher = new Blowfish(blowFishKey, Blowfish.MODE.CBC, Blowfish.PADDING.NULL)
+    cipher.setIv(Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]))
+    return Buffer.from(cipher.decode(chunk, Blowfish.TYPE.UINT8_ARRAY))
+  }
+  throw new Error("Can't find a way to decrypt chunks")
 }
 
 module.exports = {
