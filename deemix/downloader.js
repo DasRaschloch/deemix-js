@@ -70,7 +70,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
   return path
 }
 
-async function getPreferredBitrate(track, bitrate, shouldFallback, currentUser, uuid, listener){
+async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUser, uuid, listener){
   bitrate = parseInt(bitrate)
   if (track.localTrack) { return TrackFormats.LOCAL }
 
@@ -100,8 +100,11 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, currentUser, 
   async function testBitrate(track, formatNumber, formatName){
     let request
     try {
-      if (!track.urls[formatName])
-        track.urls[formatName] = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
+      if (!track.urls[formatName]){
+        let url = await dz.get_track_url(track.trackToken, formatName)
+        if (!url) url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
+        track.urls[formatName] = url
+      }
       request = got.get(
         track.urls[formatName],
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
@@ -281,6 +284,7 @@ class Downloader {
     let selectedFormat
     try{
       selectedFormat = await getPreferredBitrate(
+        this.dz,
         track,
         this.bitrate,
         this.settings.fallbackBitrate,
@@ -425,8 +429,11 @@ class Downloader {
 
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
-      if (!track.urls[formatsName[track.bitrate]])
-        track.urls[formatsName[track.bitrate]] = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+      if (!track.urls[formatsName[track.bitrate]]){
+        let url = await this.dz.get_track_url(track.trackToken, formatsName[track.bitrate])
+        if (!url) url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+        track.urls[formatsName[track.bitrate]] = url
+      }
       track.downloadURL = track.urls[formatsName[track.bitrate]]
       let stream = fs.createWriteStream(writepath)
       try {
@@ -496,7 +503,6 @@ class Downloader {
             this.warn(itemData, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
             track.parseEssentialData(newTrack)
-            await track.retriveTrackURLs(this.dz)
             await track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
           }
@@ -506,7 +512,6 @@ class Downloader {
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
               track.parseEssentialData(newTrack)
-              await track.retriveTrackURLs(this.dz)
               await track.retriveFilesizes(this.dz)
               track.searched = true
               if (this.listener) this.listener.send('queueUpdate', {

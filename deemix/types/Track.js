@@ -70,6 +70,7 @@ class Track {
       this.fallbackID = trackAPI_gw.FALLBACK.SNG_ID
     }
     this.localTrack = parseInt(this.id) < 0
+    this.urls = {}
   }
 
   async retriveFilesizes(dz){
@@ -116,7 +117,6 @@ class Track {
     }
 
     this.parseEssentialData(trackAPI_gw, trackAPI)
-    this.retriveTrackURLs(dz)
 
     if (this.localTrack){
       this.parseLocalTrackData(trackAPI_gw)
@@ -257,14 +257,6 @@ class Track {
         this.artist[artist.role].push(artist.name)
       }
     });
-  }
-
-  async retriveTrackURLs(dz){
-    let urls = await dz.get_tracks_urls(this.trackToken)
-    this.urls = {}
-    urls[0].media.forEach(url => {
-      this.urls[url.format] = url.sources[0].url
-    })
   }
 
   removeDuplicateArtists(){
