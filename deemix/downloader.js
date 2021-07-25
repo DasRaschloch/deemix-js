@@ -23,6 +23,17 @@ const extensions = {
   [TrackFormats.MP4_RA1]: '.mp4'
 }
 
+const formatsName = {
+  [TrackFormats.FLAC]:    'FLAC',
+  [TrackFormats.LOCAL]:   'MP3_MISC',
+  [TrackFormats.MP3_320]: 'MP3_320',
+  [TrackFormats.MP3_128]: 'MP3_128',
+  [TrackFormats.DEFAULT]: 'MP3_MISC',
+  [TrackFormats.MP4_RA3]: 'MP4_RA3',
+  [TrackFormats.MP4_RA2]: 'MP4_RA2',
+  [TrackFormats.MP4_RA1]: 'MP4_RA1'
+}
+
 const TEMPDIR = tmpdir()+`/deemix-imgs`
 fs.mkdirSync(TEMPDIR, { recursive: true })
 
@@ -89,8 +100,10 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
   async function testBitrate(track, formatNumber, formatName){
     let request
     try {
+      if (!track.urls[formatName])
+        track.urls[formatName] = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
       request = got.get(
-        generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
+        track.urls[formatName],
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
       ).on("response", (response)=>{
         track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
@@ -409,7 +422,9 @@ class Downloader {
 
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
-      track.downloadURL = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+      if (!track.urls[formatsName[track.bitrate]])
+        track.urls[formatsName[track.bitrate]] = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
+      track.downloadURL = track.urls[formatsName[track.bitrate]]
       let stream = fs.createWriteStream(writepath)
       try {
         await streamTrack(stream, track, 0, this.downloadObject, this.listener)
@@ -478,6 +493,7 @@ class Downloader {
             this.warn(itemData, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
             track.parseEssentialData(newTrack)
+            await track.retriveTrackURLs(this.dz)
             await track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
           }
@@ -487,6 +503,7 @@ class Downloader {
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
               track.parseEssentialData(newTrack)
+              await track.retriveTrackURLs(this.dz)
               await track.retriveFilesizes(this.dz)
               track.searched = true
               if (this.listener) this.listener.send('queueUpdate', {

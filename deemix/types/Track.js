@@ -22,6 +22,7 @@ class Track {
     this.title = "",
     this.MD5 = ""
     this.mediaVersion = ""
+    this.trackToken = ""
     this.duration = 0
     this.fallbackID = "0"
     this.filesizes = {}
@@ -48,18 +49,20 @@ class Track {
     this.artistsString = ""
     this.mainArtistsString = ""
     this.featArtistsString = ""
+    this.urls = {}
   }
 
   parseEssentialData(trackAPI_gw, trackAPI){
     this.id = String(trackAPI_gw.SNG_ID)
     this.duration = trackAPI_gw.DURATION
+    this.trackToken = trackAPI_gw.TRACK_TOKEN
     this.MD5 = trackAPI_gw.MD5_ORIGIN
     if (!this.MD5){
       if (trackAPI && trackAPI.md5_origin){
         this.MD5 = trackAPI.md5_origin
-      }else{
+      }/*else{
         throw new MD5NotFound
-      }
+      }*/
     }
     this.mediaVersion = trackAPI_gw.MEDIA_VERSION
     this.fallbackID = "0"
@@ -113,6 +116,7 @@ class Track {
     }
 
     this.parseEssentialData(trackAPI_gw, trackAPI)
+    this.retriveTrackURLs(dz)
 
     if (this.localTrack){
       this.parseLocalTrackData(trackAPI_gw)
@@ -255,6 +259,14 @@ class Track {
     });
   }
 
+  async retriveTrackURLs(dz){
+    let urls = await dz.get_tracks_urls(this.trackToken)
+    this.urls = {}
+    urls[0].media.forEach(url => {
+      this.urls[url.format] = url.sources[0].url
+    })
+  }
+
   removeDuplicateArtists(){
     [this.artist, this.artists] = removeDuplicateArtists(this.artist, this.artists)
   }
@@ -393,5 +405,8 @@ class AlbumDoesntExists extends TrackError {
 
 module.exports = {
   Track,
+  TrackError,
+  MD5NotFound,
+  NoDataToParse,
   AlbumDoesntExists
 }
