@@ -70,7 +70,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
   return path
 }
 
-async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listener){
+async function getPreferredBitrate(track, bitrate, shouldFallback, currentUser, uuid, listener){
   bitrate = parseInt(bitrate)
   if (track.localTrack) { return TrackFormats.LOCAL }
 
@@ -142,6 +142,8 @@ async function getPreferredBitrate(track, bitrate, shouldFallback, uuid, listene
     }
 
     if (!shouldFallback){
+      if ( formatName == "FLAC" && !currentUser.can_stream_lossless || formatName == "MP3_320" && !currentUser.can_stream_hq)
+        throw new WrongLicense(formatName)
       throw new PreferredBitrateNotFound
     }else if (!falledBack){
       falledBack = true
@@ -282,9 +284,10 @@ class Downloader {
         track,
         this.bitrate,
         this.settings.fallbackBitrate,
-        this.downloadObject.uuid, this.listener
+        this.dz.current_user, this.downloadObject.uuid, this.listener
       )
     }catch (e){
+      if (e.name === "WrongLicense") { throw new DownloadFailed("wrongLicense")}
       if (e.name === "PreferredBitrateNotFound") { throw new DownloadFailed("wrongBitrate", track) }
       if (e.name === "TrackNot360") { throw new DownloadFailed("no360RA") }
       console.trace(e)
@@ -659,6 +662,7 @@ const errorMessages = {
     notEncodedNoAlternative: "Track not yet encoded and no alternative found!",
     wrongBitrate: "Track not found at desired bitrate.",
     wrongBitrateNoAlternative: "Track not found at desired bitrate and no alternative found!",
+    wrongLicense: "Your account can't stream the track at the desired bitrate",
     no360RA: "Track is not available in Reality Audio 360.",
     notAvailable: "Track not available on deezer's servers!",
     notAvailableNoAlternative: "Track not available on deezer's servers and no alternative found!",
@@ -688,6 +692,14 @@ class PreferredBitrateNotFound extends DownloadError {
   constructor() {
     super()
     this.name = "PreferredBitrateNotFound"
+  }
+}
+
+class WrongLicense extends DownloadError {
+  constructor(format) {
+    super()
+    this.name = "WrongLicense"
+    this.message = `Your account doesn't have the license to stream ${format}`
   }
 }
 
