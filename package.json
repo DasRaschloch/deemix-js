@@ -11,7 +11,7 @@
   "dependencies": {
     "async": "^3.2.0",
     "crypto": "^1.0.1",
-    "deezer-js": "^1.0.2",
+    "deezer-js": "^1.0.3",
     "egoroof-blowfish": "^2.2.2",
     "got": "^11.8.2",
     "metaflac-js2": "^1.0.7",

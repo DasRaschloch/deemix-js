@@ -74,8 +74,10 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
       if (modifiedStream.length >= 2048){
         decryptedChunks = decryptChunk(modifiedStream.slice(0, 2048), blowfishKey)
         decryptedChunks = Buffer.concat([decryptedChunks, modifiedStream.slice(2048)])
+        yield decryptedChunks
+      }else{
+        yield modifiedStream
       }
-      yield decryptedChunks
     }
   }
 
