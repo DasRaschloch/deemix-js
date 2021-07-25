@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 let Blowfish
 try {
-  Blowfish = require('egoroof-blowfish')
+  Blowfish = require('./blowfish.js')
 } catch (e) { /* empty */ }
 
 function _md5 (data, type = 'binary') {
