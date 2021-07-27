@@ -85,6 +85,43 @@ function removeDuplicateArtists(artist, artists){
   return [artist, artists]
 }
 
+function formatListener(key, data){
+  let message = ""
+  switch (key) {
+    case "startAddingArtist": return `Started gathering ${data.name}'s albums (${data.id})`
+    case "finishAddingArtist": return `Finished gathering ${data.name}'s albums (${data.id})`
+    case "queueUpdate":
+      "bitrateFallback"
+      "searchFallback"
+      "downloaded"
+      "failed"
+      "progress"
+      "conversion"
+      return ""
+    case "downloadInfo":
+      "getTags"
+      "gotTags"
+      "getBitrate"
+      "gotBitrate"
+      "getAlbumArt"
+      "gotAlbumArt"
+      "downloading"
+      "downloaded"
+      "alreadyDownloaded"
+      "tagging"
+      "tagged"
+      return ""
+    case "downloadWarn": return ""
+    case "currentItemCancelled": return `Cancelled download of ${data}`
+    case "removedFromQueue": return `Removed ${data} from the queue`
+    case "finishDownload": return `${data} finished downloading`
+    case "startConversion": return `Started converting ${data}`
+    case "finishConversion": return `Finished converting ${data}`
+    default: return ""
+
+  }
+}
+
 module.exports = {
   USER_AGENT_HEADER,
   generateReplayGainString,
@@ -95,5 +132,6 @@ module.exports = {
   pipeline,
   canWrite,
   changeCase,
-  shellEscape
+  shellEscape,
+  formatListener
 }
