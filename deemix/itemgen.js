@@ -22,7 +22,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
       throw new ISRCnotOnDeezer(`https://deezer.com/track/${id}`)
     }
   }
-  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/track/${id}`)
+  if (!(/^-?\d+$/.test(id))) throw new InvalidID(`https://deezer.com/track/${id}`)
 
   // Get essential track info
   let trackAPI_gw
