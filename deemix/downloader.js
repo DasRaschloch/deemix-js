@@ -214,11 +214,13 @@ class Downloader {
           })
         }, this.settings.queueConcurrency)
 
-        this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
-          q.push({track, pos})
-        })
+        if (this.downloadObject.collection.tracks_gw.length){
+          this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
+            q.push({track, pos})
+          })
 
-        await q.drain()
+          await q.drain()
+        }
         await this.afterDownloadCollection(tracks)
       }
     }
