@@ -108,11 +108,9 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
         url,
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
       ).on("response", (response)=>{
-        track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
+        track.filesizes[`FILESIZE_${formatName}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
         track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
         request.cancel()
-      }).on("error", (e)=>{
-        throw e
       })
 
       await request
@@ -135,6 +133,9 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     let url
     try {
       url = await dz.get_track_url(track.trackToken, formatName)
+      let isUrlOk = await testURL(track, url, formatNumber, formatName)
+      if (isUrlOk) return url
+      url = undefined
     } catch (e){
       wrongLicense = (e.name === "WrongLicense")
       isGeolocked = (e.name === "WrongGeolocation")
@@ -167,7 +168,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
         currentTrack.parseEssentialData(newTrack)
         hasAlternative = currentTrack.fallbackID != 0
       }
-      url = await getCorrectURL(currentTrack, formatName, formatNumber)
+      if (!url) url = await getCorrectURL(currentTrack, formatName, formatNumber)
     } while (!url && hasAlternative)
 
     if (url) {
