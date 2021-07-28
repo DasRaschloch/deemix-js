@@ -6,6 +6,7 @@ const { USER_AGENT_HEADER, pipeline, shellEscape } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
 const { TrackFormats } = require('deezer-js')
+const { WrongLicense, WrongGeolocation } = require('deezer-js').errors
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
@@ -70,11 +71,14 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
   return path
 }
 
-async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUser, uuid, listener){
-  bitrate = parseInt(bitrate)
-  if (track.localTrack) { return TrackFormats.LOCAL }
+async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, uuid, listener){
+  preferredBitrate = parseInt(preferredBitrate)
+  if (track.localTrack) { return TrackFormats.LOCAL}
 
   let falledBack = false
+  let hasAlternative = track.fallbackID !== "0"
+  let isGeolocked = false
+  let wrongLicense = false
 
   const formats_non_360 = {
     [TrackFormats.FLAC]: "FLAC",
@@ -87,7 +91,7 @@ async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUs
     [TrackFormats.MP4_RA1]: "MP4_RA1"
   }
 
-  const is360Format = Object.keys(formats_360).includes(bitrate)
+  const is360Format = Object.keys(formats_360).includes(preferredBitrate)
   let formats
   if (!shouldFallback){
     formats = {...formats_360, ...formats_non_360}
@@ -97,22 +101,11 @@ async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUs
     formats = {...formats_non_360}
   }
 
-  async function testBitrate(track, formatNumber, formatName){
+  async function testURL(track, url, formatNumber, formatName){
     let request
-    try {
-      if (!track.urls[formatName]){
-        let url
-        try {
-          url = await dz.get_track_url(track.trackToken, formatName)
-        } catch {
-          // Don't need to know why it failed now
-          url = null
-        }
-        if (!url) url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
-        track.urls[formatName] = url
-      }
+    try{
       request = got.get(
-        track.urls[formatName],
+        url,
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
       ).on("response", (response)=>{
         track.filesizes[`FILESIZE_${formatName}`] = response.headers["content-length"]
@@ -125,36 +118,69 @@ async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUs
       await request
     } catch (e){
       if (e.isCanceled) {
-        if (track.filesizes[`FILESIZE_${formatName}`] == 0) return null
-        return formatNumber
+        if (track.filesizes[`FILESIZE_${formatName}`] == 0) return false
+        return true
       }
       if (e instanceof got.ReadError || e instanceof got.TimeoutError){
-        return await testBitrate(track, formatNumber, formatName)
+        return await testURL(track, url, formatNumber, formatName)
       }
-      if (e instanceof got.HTTPError) return null
+      if (e instanceof got.HTTPError) return false
       console.trace(e)
       throw e
     }
   }
 
+  async function getCorrectURL(track, formatName, formatNumber){
+    // Check the track with the legit method
+    let url
+    try {
+      url = await dz.get_track_url(track.trackToken, formatName)
+    } catch (e){
+      wrongLicense = (e.name === "WrongLicense")
+      isGeolocked = (e.name === "WrongGeolocation")
+    }
+    // Fallback to old method
+    if (!url){
+      url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
+      let isUrlOk = await testURL(track, url, formatNumber, formatName)
+      if (isUrlOk) return url
+      url = undefined
+    }
+    return url
+  }
+
   for (let i = 0; i < Object.keys(formats).length; i++){
+    // Check bitrates
     let formatNumber = Object.keys(formats).reverse()[i]
     let formatName = formats[formatNumber]
 
-    if (formatNumber > bitrate) { continue }
-    if (Object.keys(track.filesizes).includes(`FILESIZE_${formatName}`)){
-      if (parseInt(track.filesizes[`FILESIZE_${formatName}`]) != 0) return formatNumber
-      if (!track.filesizes[`FILESIZE_${formatName}_TESTED`]){
-        let testedBitrate = await testBitrate(track, formatNumber, formatName)
-        if (testedBitrate) return testedBitrate
+    // Current bitrate is higher than preferred bitrate; skip
+    if (formatNumber > preferredBitrate) { continue }
+
+    let url
+    let currentTrack = track
+    let newTrack
+    do {
+      url = await getCorrectURL(currentTrack, formatName, formatNumber)
+      if (hasAlternative && !url){
+        newTrack = await dz.gw.get_track_with_fallback(currentTrack.fallbackID)
+        currentTrack = new Track()
+        currentTrack.parseEssentialData(newTrack)
+        hasAlternative = currentTrack.fallbackID !== "0"
       }
+    } while (!url && hasAlternative)
+
+    if (url) {
+      if (newTrack) track.parseEssentialData(newTrack)
+      track.urls[formatName] = url
+      return formatNumber
     }
 
     if (!shouldFallback){
-      if ( formatName == "FLAC" && !currentUser.can_stream_lossless || formatName == "MP3_320" && !currentUser.can_stream_hq)
-        throw new WrongLicense(formatName)
+      if (wrongLicense) throw new WrongLicense(formatName)
+      if (isGeolocked) throw new WrongGeolocation(dz.current_user.country)
       throw new PreferredBitrateNotFound
-    }else if (!falledBack){
+    } else if (!falledBack){
       falledBack = true
       if (listener && uuid){
         listener.send("queueUpdate", {
@@ -168,7 +194,6 @@ async function getPreferredBitrate(dz, track, bitrate, shouldFallback, currentUs
         })
       }
     }
-
   }
   if (is360Format) throw new TrackNot360
   return TrackFormats.DEFAULT
@@ -296,10 +321,11 @@ class Downloader {
         track,
         this.bitrate,
         this.settings.fallbackBitrate,
-        this.dz.current_user, this.downloadObject.uuid, this.listener
+        this.downloadObject.uuid, this.listener
       )
     }catch (e){
       if (e.name === "WrongLicense") { throw new DownloadFailed("wrongLicense")}
+      if (e.name === "WrongGeolocation") { throw new DownloadFailed("wrongGeolocation")}
       if (e.name === "PreferredBitrateNotFound") { throw new DownloadFailed("wrongBitrate", track) }
       if (e.name === "TrackNot360") { throw new DownloadFailed("no360RA") }
       console.trace(e)
@@ -437,29 +463,12 @@ class Downloader {
 
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
-      let deezer_url_error
-      if (!track.urls[formatsName[track.bitrate]]){
-        let url
-        try {
-          url = await this.dz.get_track_url(track.trackToken, formatsName[track.bitrate])
-        } catch (e) {
-          deezer_url_error = e.name
-        }
-        if (!url) url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, track.bitrate)
-        track.urls[formatsName[track.bitrate]] = url
-      }
       track.downloadURL = track.urls[formatsName[track.bitrate]]
       let stream = fs.createWriteStream(writepath)
       try {
         await streamTrack(stream, track, 0, this.downloadObject, this.listener)
       } catch (e){
         fs.unlinkSync(writepath)
-        if (deezer_url_error){
-          switch (deezer_url_error) {
-            case "WrongLicense": throw new DownloadFailed('wrongLicense')
-            case "WrongGeolocation": throw new DownloadFailed('wrongGeolocation')
-          }
-        }
         if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
         throw e
       }
@@ -718,14 +727,6 @@ class PreferredBitrateNotFound extends DownloadError {
   constructor() {
     super()
     this.name = "PreferredBitrateNotFound"
-  }
-}
-
-class WrongLicense extends DownloadError {
-  constructor(format) {
-    super()
-    this.name = "WrongLicense"
-    this.message = `Your account doesn't have the license to stream ${format}`
   }
 }
 

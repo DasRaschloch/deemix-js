@@ -370,10 +370,10 @@ deepmerge@^4.0.0:
   resolved "https://registry.npmjs.org/deepmerge/-/deepmerge-4.2.2.tgz"
   integrity sha512-FJ3UgI4gIl+PHZm53knsuSFpE+nESMr7M4v9QcgB7S63Kj/6WqMiFQJpBBYz1Pt+66bZpP3Q7Lye0Oo9MPKEdg==
 
-deezer-js@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/deezer-js/-/deezer-js-1.0.3.tgz#e9345aeb658606e8a33ec33835806b7e977c3eb3"
-  integrity sha512-J/bHsxUGC3BS0wuQyf4rYsjKRUsxDR6SvnrJzgtNVdZeLzcGeCPn32nPkAZhegJGp8bNaDgzgkDSySCxJNFGpA==
+deezer-js@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/deezer-js/-/deezer-js-1.0.5.tgz#566ad6d924122dfa9d3f7595a805964978defa0d"
+  integrity sha512-UJwQkaUZONr6/nvutCk3bxmUYBtLb0lEcScHgR82FsfFjLTqMJJT/3uuqX/NF5qRfop2HWPyAzJWDUKDVu6pJw==
   dependencies:
     got "^11.8.2"
     tough-cookie "^4.0.0"
