@@ -76,7 +76,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
   if (track.localTrack) { return TrackFormats.LOCAL}
 
   let falledBack = false
-  let hasAlternative = track.fallbackID !== "0"
+  let hasAlternative = track.fallbackID != 0
   let isGeolocked = false
   let wrongLicense = false
 
@@ -157,17 +157,17 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     // Current bitrate is higher than preferred bitrate; skip
     if (formatNumber > preferredBitrate) { continue }
 
-    let url
     let currentTrack = track
+    let url = await getCorrectURL(currentTrack, formatName, formatNumber)
     let newTrack
     do {
-      url = await getCorrectURL(currentTrack, formatName, formatNumber)
-      if (hasAlternative && !url){
+      if (!url && hasAlternative){
         newTrack = await dz.gw.get_track_with_fallback(currentTrack.fallbackID)
         currentTrack = new Track()
         currentTrack.parseEssentialData(newTrack)
-        hasAlternative = currentTrack.fallbackID !== "0"
+        hasAlternative = currentTrack.fallbackID != 0
       }
+      url = await getCorrectURL(currentTrack, formatName, formatNumber)
     } while (!url && hasAlternative)
 
     if (url) {
