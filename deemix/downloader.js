@@ -355,7 +355,10 @@ class Downloader {
     let writepath = `${filepath}/${filename}${extension}`
 
     // Save extrasPath
-    if (extrasPath && !this.extrasPath) this.extrasPath = extrasPath
+    if (extrasPath && !this.extrasPath) {
+      this.extrasPath = extrasPath
+      this.downloadObject.extrasPath = extrasPath
+    }
 
     // Generate covers URLs
     let embeddedImageFormat = `jpg-${this.settings.jpegImageQuality}`
@@ -595,7 +598,10 @@ class Downloader {
 
   async afterDownloadSingle(track){
     if (!track) return
-    if (!this.extrasPath) this.extrasPath = this.settings.downloadLocation
+    if (!this.extrasPath) {
+      this.extrasPath = this.settings.downloadLocation
+      this.downloadObject.extrasPath = this.extrasPath
+    }
 
     // Save local album artwork
     if (this.settings.saveArtwork && track.albumPath)
@@ -626,7 +632,11 @@ class Downloader {
   }
 
   async afterDownloadCollection(tracks){
-    if (!this.extrasPath) this.extrasPath = this.settings.downloadLocation
+    if (!this.extrasPath) {
+      this.extrasPath = this.settings.downloadLocation
+      this.downloadObject.extrasPath = this.extrasPath
+    }
+
     let playlist = []
     let errors = ""
     let searched = ""
