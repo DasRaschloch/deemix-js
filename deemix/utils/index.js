@@ -92,8 +92,8 @@ function formatListener(key, data){
     case "startAddingArtist": return `Started gathering ${data.name}'s albums (${data.id})`
     case "finishAddingArtist": return `Finished gathering ${data.name}'s albums (${data.id})`
     case "updateQueue":
-      message = `${data['uuid']}`
-      if (data.downloaded) message += `  Completed download of ${data.downloadPath.splice(data.extrasPath.length)}`
+      message = `[${data['uuid']}]`
+      if (data.downloaded) message += `  Completed download of ${data.downloadPath.slice(data.extrasPath.length)}`
       if (data.failed) message += ` ${data.data.artist} - ${data.data.title} :: ${data.error}`
       if (data.progress) message += ` Download at ${data.progress}%`
       if (data.conversion) message += ` Conversion at ${data.conversion}%`
@@ -127,11 +127,11 @@ function formatListener(key, data){
         case 'search': message += "Searching for alternative."; break;
       }
       return message
-    case "currentItemCancelled": return `Cancelled download of ${data}`
-    case "removedFromQueue": return `Removed ${data} from the queue`
-    case "finishDownload": return `${data} finished downloading`
-    case "startConversion": return `Started converting ${data}`
-    case "finishConversion": return `Finished converting ${data}`
+    case "currentItemCancelled": return `Current item cancelled (${data})`
+    case "removedFromQueue": return `[${data}] Removed from the queue`
+    case "finishDownload": return `[${data}] Finished downloading`
+    case "startConversion": return `[${data}] Started converting`
+    case "finishConversion": return `[${data}] Finished converting`
     default: return message
   }
 }
