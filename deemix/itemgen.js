@@ -2,6 +2,7 @@ const {
   Single,
   Collection
 } = require('./types/DownloadObjects.js')
+const { GenerationError, ISRCnotOnDeezer, InvalidID, NotYourPrivatePlaylist } = require('./errors.js');
 const { LyricsStatus } = require('deezer-js').gw
 const { map_user_playlist } = require('deezer-js').utils
 const { each } = require('async')
@@ -310,84 +311,11 @@ async function generateArtistTopItem(dz, id, bitrate){
   return generatePlaylistItem(dz, playlistAPI.id, bitrate, playlistAPI, artistTopTracksAPI_gw)
 }
 
-class GenerationError extends Error {
-  constructor(link, message) {
-    super(message)
-    this.link = link
-    this.name = "GenerationError"
-  }
-}
-
-class ISRCnotOnDeezer extends GenerationError {
-  constructor(link) {
-    super(link, "Track ISRC is not available on deezer")
-    this.name = "ISRCnotOnDeezer"
-    this.errid = "ISRCnotOnDeezer"
-  }
-}
-
-class NotYourPrivatePlaylist extends GenerationError {
-  constructor(link) {
-    super(link, "You can't download others private playlists.")
-    this.name = "NotYourPrivatePlaylist"
-    this.errid = "notYourPrivatePlaylist"
-  }
-}
-
-class TrackNotOnDeezer extends GenerationError {
-  constructor(link) {
-    super(link, "Track not found on deezer!")
-    this.name = "TrackNotOnDeezer"
-    this.errid = "trackNotOnDeezer"
-  }
-}
-
-class AlbumNotOnDeezer extends GenerationError {
-  constructor(link) {
-    super(link, "Album not found on deezer!")
-    this.name = "AlbumNotOnDeezer"
-    this.errid = "albumNotOnDeezer"
-  }
-}
-
-class InvalidID extends GenerationError {
-  constructor(link) {
-    super(link, "Link ID is invalid!")
-    this.name = "InvalidID"
-    this.errid = "invalidID"
-  }
-}
-
-class LinkNotSupported extends GenerationError {
-  constructor(link) {
-    super(link, "Link is not supported.")
-    this.name = "LinkNotSupported"
-    this.errid = "unsupportedURL"
-  }
-}
-
-class LinkNotRecognized extends GenerationError {
-  constructor(link) {
-    super(link, "Link is not recognized.")
-    this.name = "LinkNotRecognized"
-    this.errid = "invalidURL"
-  }
-}
-
 module.exports = {
   generateTrackItem,
   generateAlbumItem,
   generatePlaylistItem,
   generateArtistItem,
   generateArtistDiscographyItem,
-  generateArtistTopItem,
-
-  GenerationError,
-  ISRCnotOnDeezer,
-  NotYourPrivatePlaylist,
-  TrackNotOnDeezer,
-  AlbumNotOnDeezer,
-  InvalidID,
-  LinkNotSupported,
-  LinkNotRecognized
+  generateArtistTopItem
 }

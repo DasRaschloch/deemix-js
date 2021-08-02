@@ -8,6 +8,7 @@ const { Date } = require('./Date.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 const { changeCase } = require('../utils/index.js')
 const { FeaturesOption } = require('../settings.js')
+const { TrackError, NoDataToParse, AlbumDoesntExists } = require('../errros.js');
 
 const {
   generateReplayGainString,
@@ -367,38 +368,6 @@ class Track {
   }
 }
 
-class TrackError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "TrackError";
-  }
-}
-
-class MD5NotFound extends TrackError {
-  constructor(message) {
-    super(message);
-    this.name = "MD5NotFound";
-  }
-}
-
-class NoDataToParse extends TrackError {
-  constructor(message) {
-    super(message);
-    this.name = "NoDataToParse";
-  }
-}
-
-class AlbumDoesntExists extends TrackError {
-  constructor(message) {
-    super(message);
-    this.name = "AlbumDoesntExists";
-  }
-}
-
 module.exports = {
-  Track,
-  TrackError,
-  MD5NotFound,
-  NoDataToParse,
-  AlbumDoesntExists
+  Track
 }

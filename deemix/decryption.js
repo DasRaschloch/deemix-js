@@ -1,5 +1,6 @@
 const got = require('got')
 const {_md5, _ecbCrypt, _ecbDecrypt, generateBlowfishKey, decryptChunk} = require('./utils/crypto.js')
+const { DownloadCanceled, DownloadEmpty} = require('./errors.js')
 
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 
@@ -143,27 +144,11 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   }
 }
 
-class DownloadEmpty extends Error {
-  constructor() {
-    super()
-    this.name = "DownloadEmpty"
-  }
-}
-
-class DownloadCanceled extends Error {
-  constructor() {
-    super()
-    this.name = "DownloadCanceled"
-  }
-}
-
 module.exports = {
   generateStreamPath,
   generateStreamURL,
   generateCryptedStreamURL,
   reverseStreamPath,
   reverseStreamURL,
-  streamTrack,
-  DownloadEmpty,
-  DownloadCanceled
+  streamTrack
 }
