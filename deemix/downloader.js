@@ -102,7 +102,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     formats = {...formats_non_360}
   }
 
-  async function testURL(track, url, formatNumber, formatName){
+  async function testURL(track, url, formatName){
     let request
     try{
       request = got.get(
@@ -121,7 +121,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
         return true
       }
       if (e instanceof got.ReadError || e instanceof got.TimeoutError){
-        return await testURL(track, url, formatNumber, formatName)
+        return await testURL(track, url, formatName)
       }
       if (e instanceof got.HTTPError) return false
       console.trace(e)
@@ -134,8 +134,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     let url
     try {
       url = await dz.get_track_url(track.trackToken, formatName)
-      let isUrlOk = await testURL(track, url, formatNumber, formatName)
-      if (isUrlOk) return url
+      if (await testURL(track, url, formatName, formatNumber)) return url
       url = undefined
     } catch (e){
       wrongLicense = (e.name === "WrongLicense")
@@ -144,8 +143,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     // Fallback to old method
     if (!url){
       url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
-      let isUrlOk = await testURL(track, url, formatNumber, formatName)
-      if (isUrlOk) return url
+      if (await testURL(track, url, formatName, formatNumber)) return url
       url = undefined
     }
     return url

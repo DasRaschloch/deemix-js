@@ -35,8 +35,8 @@ class IDownloadObject{
       failed: this.failed,
       progress: this.progress,
       errors: this.errors,
-      extrasPath: this.extrasPath,
       files: this.files,
+      extrasPath: this.extrasPath,
       __type__: this.__type__
     }
   }
