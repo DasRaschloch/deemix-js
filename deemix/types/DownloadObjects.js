@@ -34,6 +34,7 @@ class IDownloadObject{
       failed: this.failed,
       progress: this.progress,
       errors: this.errors,
+      extrasPath: this.extrasPath,
       files: this.files,
       __type__: this.__type__
     }
@@ -70,7 +71,8 @@ class IDownloadObject{
       artist: this.artist,
       cover: this.cover,
       explicit: this.explicit,
-      size: this.size
+      size: this.size,
+      extrasPath: this.extrasPath
     }
   }
 
