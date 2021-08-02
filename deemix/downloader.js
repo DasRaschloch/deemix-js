@@ -1,11 +1,11 @@
 const { Track } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
-const { streamTrack, generateCryptedStreamURL, DownloadCanceled } = require('./decryption.js')
+const { streamTrack, generateCryptedStreamURL } = require('./decryption.js')
 const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline, shellEscape } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
-const { PreferredBitrateNotFound, TrackNot360, DownloadFailed, ErrorMessages} = require('./errors.js')
+const { PreferredBitrateNotFound, TrackNot360, DownloadFailed, ErrorMessages, DownloadCanceled} = require('./errors.js')
 const { TrackFormats } = require('deezer-js')
 const { WrongLicense, WrongGeolocation } = require('deezer-js').errors
 const got = require('got')
