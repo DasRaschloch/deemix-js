@@ -8,7 +8,7 @@ const { Date } = require('./Date.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 const { changeCase } = require('../utils/index.js')
 const { FeaturesOption } = require('../settings.js')
-const { TrackError, NoDataToParse, AlbumDoesntExists } = require('../errros.js');
+const { TrackError, NoDataToParse, AlbumDoesntExists } = require('../errors.js');
 
 const {
   generateReplayGainString,
