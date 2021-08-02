@@ -208,7 +208,6 @@ class Downloader {
     this.bitrate = downloadObject.bitrate
     this.listener = listener
 
-    this.extrasPath = null
     this.playlistCovername = null
     this.playlistURLs = []
 
@@ -355,8 +354,7 @@ class Downloader {
     let writepath = `${filepath}/${filename}${extension}`
 
     // Save extrasPath
-    if (extrasPath && !this.extrasPath) {
-      this.extrasPath = extrasPath
+    if (extrasPath && !this.downloadObject.extrasPath) {
       this.downloadObject.extrasPath = extrasPath
     }
 
@@ -502,7 +500,7 @@ class Downloader {
         uuid: this.downloadObject.uuid,
         downloaded: true,
         downloadPath: String(writepath),
-        extrasPath: String(this.extrasPath)
+        extrasPath: String(this.downloadObject.extrasPath)
       })
     returnData.filename = writepath.slice(extrasPath.length+1)
     returnData.data = itemData
@@ -598,9 +596,8 @@ class Downloader {
 
   async afterDownloadSingle(track){
     if (!track) return
-    if (!this.extrasPath) {
-      this.extrasPath = this.settings.downloadLocation
-      this.downloadObject.extrasPath = this.extrasPath
+    if (!this.downloadObject.extrasPath) {
+      this.downloadObject.extrasPath = this.settings.downloadLocation
     }
 
     // Save local album artwork
@@ -618,23 +615,22 @@ class Downloader {
     // Create searched logfile
     if (this.settings.logSearched && track.searched){
       let filename = `${track.data.artist} - ${track.data.title}`
-      let searchedFile = fs.readFileSync(`${this.extrasPath}/searched.txt`).toString()
+      let searchedFile = fs.readFileSync(`${this.downloadObject.extrasPath}/searched.txt`).toString()
       if (searchedFile.indexOf(filename) == -1){
         if (searchedFile != "") searchedFile += "\r\n"
         searchedFile += filename + "\r\n"
-        fs.writeFileSync(`${this.extrasPath}/searched.txt`, searchedFile)
+        fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searchedFile)
       }
     }
 
     // Execute command after download
     if (this.settings.executeCommand !== "")
-      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
+      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
   }
 
   async afterDownloadCollection(tracks){
-    if (!this.extrasPath) {
-      this.extrasPath = this.settings.downloadLocation
-      this.downloadObject.extrasPath = this.extrasPath
+    if (!this.downloadObject.extrasPath) {
+      this.downloadObject.extrasPath = this.settings.downloadLocation
     }
 
     let playlist = []
@@ -670,27 +666,27 @@ class Downloader {
 
     // Create errors logfile
     if (this.settings.logErrors && errors != "")
-      fs.writeFileSync(`${this.extrasPath}/errors.txt`, errors)
+      fs.writeFileSync(`${this.downloadObject.extrasPath}/errors.txt`, errors)
 
     // Create searched logfile
     if (this.settings.logSearched && searched != "")
-      fs.writeFileSync(`${this.extrasPath}/searched.txt`, searched)
+      fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searched)
 
     // Save Playlist Artwork
     if (this.settings.saveArtwork && this.playlistCovername && !this.settings.tags.savePlaylistAsCompilation)
       await each(this.playlistURLs, async (image) => {
-        await downloadImage(image.url, `${this.extrasPath}/${this.playlistCovername}.${image.ext}`, this.settings.overwriteFile)
+        await downloadImage(image.url, `${this.downloadObject.extrasPath}/${this.playlistCovername}.${image.ext}`, this.settings.overwriteFile)
       })
 
     // Create M3U8 File
     if (this.settings.createM3U8File){
       let filename = generateDownloadObjectName(this.settings.playlistFilenameTemplate, this.downloadObject, this.settings) || "playlist"
-      fs.writeFileSync(`${this.extrasPath}/${filename}.m3u8`, playlist.join('\n'))
+      fs.writeFileSync(`${this.downloadObject.extrasPath}/${filename}.m3u8`, playlist.join('\n'))
     }
 
     // Execute command after download
     if (this.settings.executeCommand !== "")
-      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.extrasPath)).replaceAll("%filename%", ''))
+      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", ''))
   }
 }
 
