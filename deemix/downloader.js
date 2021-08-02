@@ -183,9 +183,9 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     } else if (!falledBack){
       falledBack = true
       if (listener && uuid){
-        listener.send("queueUpdate", {
+        listener.send("downloadInfo", {
           uuid,
-          bitrateFallback: true,
+          state: "bitrateFallback",
           data:{
             id: track.id,
             title: track.title,
@@ -544,15 +544,7 @@ class Downloader {
               track.parseEssentialData(newTrack)
               await track.retriveFilesizes(this.dz)
               track.searched = true
-              if (this.listener) this.listener.send('queueUpdate', {
-                uuid: this.downloadObject.uuid,
-                searchFallback: true,
-                data: {
-                  id: track.id,
-                  title: track.title,
-                  artist: track.mainArtist.name
-                }
-              })
+              this.log(itemData, "searchFallback")
               return await this.downloadWrapper(extraData, track)
             }
           }
