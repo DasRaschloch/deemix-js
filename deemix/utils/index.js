@@ -26,7 +26,7 @@ function changeCase(txt, type){
     case 'start':
       txt = txt.split(" ")
       for (let i = 0; i < txt.length; i++) {
-        if (txt[i].startsWith("(") || txt[i].startsWith("[") || txt[i].startsWith("{")) {
+        if (bracket = ['(', '{', '['].some(bracket => txt[i].startsWith(bracket))) {
           txt[i] = txt[i][0] + txt[i][1].toUpperCase() + txt[i].substr(2).toLowerCase()
         } else {
           txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
