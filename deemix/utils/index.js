@@ -25,7 +25,13 @@ function changeCase(txt, type){
     case 'upper': return txt.toUpperCase()
     case 'start':
       txt = txt.split(" ")
-      for (let i = 0; i < txt.length; i++) txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
+      for (let i = 0; i < txt.length; i++) {
+        if (bracket = ['(', '{', '['].some(bracket => txt[i].startsWith(bracket))) {
+          txt[i] = txt[i][0] + txt[i][1].toUpperCase() + txt[i].substr(2).toLowerCase()
+        } else {
+          txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
+        }
+      }
       return txt.join(" ")
     case 'sentence': return txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase()
     default: return txt
