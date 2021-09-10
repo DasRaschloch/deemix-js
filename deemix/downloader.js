@@ -1,7 +1,7 @@
 const { Track } = require('./types/Track.js')
 const { StaticPicture } = require('./types/Picture.js')
 const { streamTrack, generateCryptedStreamURL } = require('./decryption.js')
-const { tagID3, tagID3v1, tagFLAC } = require('./tagger.js')
+const { tagID3, tagFLAC } = require('./tagger.js')
 const { USER_AGENT_HEADER, pipeline, shellEscape } = require('./utils/index.js')
 const { DEFAULTS, OverwriteOption } = require('./settings.js')
 const { generatePath, generateAlbumName, generateArtistName, generateDownloadObjectName } = require('./utils/pathtemplates.js')
