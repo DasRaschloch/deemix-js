@@ -125,7 +125,13 @@ function tagID3(path, track, save){
   }
   tag.addTag()
 
-  fs.writeFileSync(path, Buffer.from(tag.arrayBuffer))
+  let taggedSongBuffer = Buffer.from(tag.arrayBuffer)
+  if (taggedSongBuffer.slice(-128,-125).toString() === "TAG")
+    taggedSongBuffer = taggedSongBuffer.slice(0, -128)
+  if (save.saveID3v1)
+    taggedSongBuffer = tagID3v1(taggedSongBuffer, track, save)
+
+  fs.writeFileSync(path, taggedSongBuffer)
 }
 
 function tagFLAC(path, track, save){
@@ -234,7 +240,7 @@ function extAsciiFilter(string){
   return output
 }
 
-function tagID3v1(path, track, save){
+function tagID3v1(taggedSongBuffer, track, save){
   const tagBuffer = Buffer.alloc(128)
 
   tagBuffer.write('TAG', 0) // Header
@@ -277,12 +283,11 @@ function tagID3v1(path, track, save){
   }
 
   // Save tags
-  const songBuffer = fs.readFileSync(path)
-  const buffer = new ArrayBuffer(songBuffer.byteLength + 128)
+  const buffer = new ArrayBuffer(taggedSongBuffer.byteLength + 128)
   const bufferWriter = new Uint8Array(buffer)
-  bufferWriter.set(new Uint8Array(songBuffer), 0)
-  bufferWriter.set(new Uint8Array(tagBuffer), songBuffer.byteLength)
-  fs.writeFileSync(path, Buffer.from(buffer))
+  bufferWriter.set(new Uint8Array(taggedSongBuffer), 0)
+  bufferWriter.set(new Uint8Array(tagBuffer), taggedSongBuffer.byteLength)
+  return Buffer.from(buffer)
 }
 
 module.exports = {

@@ -484,7 +484,6 @@ class Downloader {
       this.log(itemData, "tagging")
       if (extension == '.mp3'){
         tagID3(writepath, track, this.settings.tags)
-        if (this.settings.tags.saveID3v1) tagID3v1(writepath, track, this.settings.tags)
       } else if (extension == '.flac'){
         tagFLAC(writepath, track, this.settings.tags)
       }
