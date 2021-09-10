@@ -562,7 +562,8 @@ class Downloader {
         console.trace(e)
         result = {error:{
           message: e.message,
-          data: itemData
+          data: itemData,
+          stack: String(e.stack)
         }}
       }
     }
@@ -578,7 +579,8 @@ class Downloader {
           failed: true,
           data: error.data,
           error: error.message,
-          errid: error.errid || null
+          errid: error.errid || null,
+          stack: error.stack || null
         })
       }
     }
