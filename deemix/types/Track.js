@@ -223,6 +223,7 @@ class Track {
     this.ISRC = trackAPI_gw.ISRC
     this.trackNumber = trackAPI_gw.TRACK_NUMBER
     this.contributors = trackAPI_gw.SNG_CONTRIBUTORS
+    this.rank = trackAPI_gw.RANK_SNG
 
     this.lyrics = new Lyrics(trackAPI_gw.LYRICS_ID || "0")
 

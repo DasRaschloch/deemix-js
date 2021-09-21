@@ -89,6 +89,7 @@ const DEFAULTS = {
     composer: false,
     involvedPeople: false,
     source: false,
+    rating: false,
     savePlaylistAsCompilation: false,
     useNullSeparator: false,
     saveID3v1: true,

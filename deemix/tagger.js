@@ -112,6 +112,14 @@ function tagID3(path, track, save){
     })
   }
 
+  if (save.rating) {
+    let rank = (track.rank / 10000) * 2.55;
+    rank = rank > 255 ? 255 : Math.round(rank);
+    tag.setFrame('POPM', {
+      rating: rank
+    })
+  }
+
   if (save.cover && track.album.embeddedCoverPath){
     const coverArrayBuffer = fs.readFileSync(track.album.embeddedCoverPath)
     if (coverArrayBuffer.length != 0){
@@ -216,6 +224,11 @@ function tagFLAC(path, track, save){
   if (save.source){
     flac.setTag('SOURCE=Deezer')
     flac.setTag(`SOURCEID=${track.id}`)
+  }
+
+  if (save.rating) {
+    let rank = Math.round(track.rank / 10000);
+    flac.setTag(`RATING=${rank}`)
   }
 
   if (save.cover && track.album.embeddedCoverPath){
