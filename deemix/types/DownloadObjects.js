@@ -13,7 +13,7 @@ class IDownloadObject{
     this.progress = obj.progress || 0
     this.errors = obj.errors || []
     this.files = obj.files || []
-    this.extrasPath = obj.extrasPath || null
+    this.extrasPath = obj.extrasPath || ""
     this.progressNext = 0
     this.uuid = `${this.type}_${this.id}_${this.bitrate}`
     this.isCanceled = false

@@ -167,7 +167,7 @@ class Track {
       if (!this.copyright) this.copyright = albumAPI_gw.COPYRIGHT
       if (trackAPI_gw.GENRES){
         trackAPI_gw.GENRES.forEach((genre) => {
-          if (!this.album.genre.includes(genre)) this.album.genre.push()
+          if (!this.album.genre.includes(genre)) this.album.genre.push(genre)
         })
       }
       this.parseTrack(trackAPI)

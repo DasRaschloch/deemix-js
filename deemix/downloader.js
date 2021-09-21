@@ -103,6 +103,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
   }
 
   async function testURL(track, url, formatName){
+    if (!url) return false
     let request
     try{
       request = got.get(
@@ -492,7 +493,7 @@ class Downloader {
 
     if (track.searched) returnData.searched = true
     this.downloadObject.downloaded += 1
-    this.downloadObject.files.push(String(writepath))
+
     if (this.listener)
       this.listener.send('updateQueue', {
         uuid: this.downloadObject.uuid,
@@ -502,6 +503,8 @@ class Downloader {
       })
     returnData.filename = writepath.slice(extrasPath.length+1)
     returnData.data = itemData
+    returnData.path = String(writepath)
+    this.downloadObject.files.push(returnData)
     return returnData
   }
 

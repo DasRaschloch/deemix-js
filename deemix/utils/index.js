@@ -26,7 +26,7 @@ function changeCase(txt, type){
     case 'start':
       txt = txt.split(" ")
       for (let i = 0; i < txt.length; i++) {
-        if (bracket = ['(', '{', '['].some(bracket => txt[i].startsWith(bracket))) {
+        if (['(', '{', '['].some(bracket => txt[i].startsWith(bracket))) {
           txt[i] = txt[i][0] + txt[i][1].toUpperCase() + txt[i].substr(2).toLowerCase()
         } else {
           txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
@@ -137,7 +137,7 @@ function formatListener(key, data){
     case "removedFromQueue": return `[${data}] Removed from the queue`
     case "finishDownload": return `[${data}] Finished downloading`
     case "startConversion": return `[${data}] Started converting`
-    case "finishConversion": return `[${data}] Finished converting`
+    case "finishConversion": return `[${data.uuid}] Finished converting`
     default: return message
   }
 }
