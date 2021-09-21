@@ -74,33 +74,11 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
 
 async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, uuid, listener){
   preferredBitrate = parseInt(preferredBitrate)
-  if (track.localTrack) { return TrackFormats.LOCAL}
 
   let falledBack = false
   let hasAlternative = track.fallbackID != 0
   let isGeolocked = false
   let wrongLicense = false
-
-  const formats_non_360 = {
-    [TrackFormats.FLAC]: "FLAC",
-    [TrackFormats.MP3_320]: "MP3_320",
-    [TrackFormats.MP3_128]: "MP3_128"
-  }
-  const formats_360 = {
-    [TrackFormats.MP4_RA3]: "MP4_RA3",
-    [TrackFormats.MP4_RA2]: "MP4_RA2",
-    [TrackFormats.MP4_RA1]: "MP4_RA1"
-  }
-
-  const is360Format = Object.keys(formats_360).includes(preferredBitrate)
-  let formats
-  if (!shouldFallback){
-    formats = {...formats_360, ...formats_non_360}
-  }else if (is360Format){
-    formats = {...formats_360}
-  }else{
-    formats = {...formats_non_360}
-  }
 
   async function testURL(track, url, formatName){
     if (!url) return false
@@ -150,6 +128,33 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     return url
   }
 
+  if (track.localTrack) {
+    let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.LOCAL)
+    track.urls["MP3_MISC"] = url
+    return TrackFormats.LOCAL
+  }
+
+  const formats_non_360 = {
+    [TrackFormats.FLAC]: "FLAC",
+    [TrackFormats.MP3_320]: "MP3_320",
+    [TrackFormats.MP3_128]: "MP3_128"
+  }
+  const formats_360 = {
+    [TrackFormats.MP4_RA3]: "MP4_RA3",
+    [TrackFormats.MP4_RA2]: "MP4_RA2",
+    [TrackFormats.MP4_RA1]: "MP4_RA1"
+  }
+
+  const is360Format = Object.keys(formats_360).includes(preferredBitrate)
+  let formats
+  if (!shouldFallback){
+    formats = {...formats_360, ...formats_non_360}
+  }else if (is360Format){
+    formats = {...formats_360}
+  }else{
+    formats = {...formats_non_360}
+  }
+
   for (let i = 0; i < Object.keys(formats).length; i++){
     // Check bitrates
     let formatNumber = Object.keys(formats).reverse()[i]
@@ -197,6 +202,8 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     }
   }
   if (is360Format) throw new TrackNot360
+  let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.DEFAULT)
+  track.urls["MP3_MISC"] = url
   return TrackFormats.DEFAULT
 }
 
@@ -466,6 +473,7 @@ class Downloader {
     // Download the track
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
       track.downloadURL = track.urls[formatsName[track.bitrate]]
+      if (!track.downloadURL) throw new DownloadFailed('notAvailable', track)
       let stream = fs.createWriteStream(writepath)
       try {
         await streamTrack(stream, track, 0, this.downloadObject, this.listener)
