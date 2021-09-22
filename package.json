@@ -13,7 +13,7 @@
     "crypto": "^1.0.1",
     "deezer-js": "1.2.2",
     "got": "^11.8.2",
-    "metaflac-js2": "^1.0.7",
+    "metaflac-js2": "^1.0.8",
     "spotify-web-api-node": "^5.0.2"
   },
   "devDependencies": {
