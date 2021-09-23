@@ -82,6 +82,22 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     }
   }
 
+  async function* depadder(source){
+    let isStart = true
+    for await (let chunk of source){
+      if (isStart && chunk[0] == 0){
+        let i
+        for (i = 0; i < chunk.length; i++){
+          let byte = chunk[i]
+          if (byte !== 0) break
+        }
+        chunk = chunk.slice(i)
+      }
+      isStart = false
+      yield chunk
+    }
+  }
+
   let request = got.stream(track.downloadURL, {
     headers: headers,
     retry: 3
@@ -130,7 +146,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   })
 
   try {
-    await pipeline(request, decrypter, outputStream)
+    await pipeline(request, decrypter, depadder, outputStream)
   } catch (e){
     if (e instanceof got.ReadError || e instanceof got.TimeoutError){
       await streamTrack(outputStream, track, chunkLength, downloadObject, listener)
