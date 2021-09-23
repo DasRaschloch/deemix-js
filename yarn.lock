@@ -340,10 +340,10 @@ deep-is@^0.1.3:
   resolved "https://registry.yarnpkg.com/deep-is/-/deep-is-0.1.4.tgz#a6f2dce612fadd2ef1f519b73551f17e85199831"
   integrity sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==
 
-deezer-js@1.2.2:
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/deezer-js/-/deezer-js-1.2.2.tgz#65a8360ecc9ce37b776712b23573e8cd10321c01"
-  integrity sha512-cD9K3nlXlw4bX7yrSN5srEB50AmB8+DUw4UlheTKXbyEdv3mrcIK+RKFB0BkksQOaLfcEJeHGL9PxzsvTWQ2gg==
+deezer-js@1.2.3:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/deezer-js/-/deezer-js-1.2.3.tgz#674294cdfe7469de4ad2be8b5e8a07cf6dec625f"
+  integrity sha512-MSMeh0AmibjZYKSMRB++yInxIldTbYlgHp+/HlIoRdyeg172qVSxsfuIcl7Uw2ui7S7Hcdk2I/FhtjFhOYMhXw==
   dependencies:
     got "^11.8.2"
     tough-cookie "^4.0.0"
