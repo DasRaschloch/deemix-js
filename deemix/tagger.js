@@ -57,7 +57,7 @@ function tagID3(path, track, save){
   if (save.date) tag.setFrame('TDAT', "" + track.date.day + track.date.month)
 
   if (save.length) tag.setFrame('TLEN', parseInt(track.duration)*1000)
-  if (save.bpm) tag.setFrame('TBPM', track.bpm)
+  if (save.bpm && track.bpm) tag.setFrame('TBPM', track.bpm)
   if (save.label) tag.setFrame('TPUB', track.album.label)
   if (save.isrc) tag.setFrame('TSRC', track.ISRC)
   if (save.barcode) tag.setFrame('TXXX', {
@@ -196,7 +196,7 @@ function tagFLAC(path, track, save){
   else if (save.year) flac.setTag(`DATE=${track.date.year}`)
 
   if (save.length) flac.setTag(`LENGTH=${parseInt(track.duration)*1000}`)
-  if (save.bpm) flac.setTag(`BPM=${track.bpm}`)
+  if (save.bpm && track.bpm) flac.setTag(`BPM=${track.bpm}`)
   if (save.label) flac.setTag(`PUBLISHER=${track.album.label}`)
   if (save.isrc) flac.setTag(`ISRC=${track.ISRC}`)
   if (save.barcode) flac.setTag(`BARCODE=${track.album.barcode}`)
