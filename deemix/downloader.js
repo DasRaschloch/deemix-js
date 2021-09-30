@@ -46,7 +46,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
     fs.unlinkSync(path)
   }
 
-  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000, retry: 3})
+  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}, timeout: 30000, retry: 3})
   const fileWriterStream = fs.createWriteStream(path)
 
   try {
@@ -86,7 +86,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     try{
       request = got.get(
         url,
-        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000 }
+        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000, https: {rejectUnauthorized: false} }
       ).on("response", (response)=>{
         track.filesizes[`FILESIZE_${formatName}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
         track.filesizes[`FILESIZE_${formatName}_TESTED`] = true

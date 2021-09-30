@@ -37,7 +37,7 @@ class Spotify extends Plugin {
 
   async parseLink(link){
     if (link.includes('link.tospotify.com')){
-      link = await got.get(link) // Resolve URL shortner
+      link = await got.get(link, {https: {rejectUnauthorized: false}}) // Resolve URL shortner
       link = link.url
     }
     // Remove extra stuff

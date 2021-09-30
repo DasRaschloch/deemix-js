@@ -87,6 +87,7 @@ class Track {
           output: '3',
           method: 'song_getData'
         },
+        https: {rejectUnauthorized: false},
         json: {sng_id: this.id},
         headers: dz.http_headers,
         timeout: 30000

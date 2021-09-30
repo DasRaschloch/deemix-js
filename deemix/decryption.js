@@ -100,7 +100,8 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
 
   let request = got.stream(track.downloadURL, {
     headers: headers,
-    retry: 3
+    retry: 3,
+    https: {rejectUnauthorized: false}
   }).on('response', (response)=>{
     complete = parseInt(response.headers["content-length"])
     if (complete == 0) {

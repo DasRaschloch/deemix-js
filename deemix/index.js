@@ -12,7 +12,7 @@ const {
 
 async function parseLink(link){
   if (link.includes('deezer.page.link')){
-    link = await got.get(link) // Resolve URL shortner
+    link = await got.get(link, {https: {rejectUnauthorized: false}}) // Resolve URL shortner
     link = link.url
   }
   // Remove extra stuff
