@@ -112,7 +112,13 @@ function load(configFolder){
 
   if (! fs.existsSync(configFolder+'config.json')) save(DEFAULTS, configFolder)
 
-  let settings = JSON.parse(fs.readFileSync(configFolder+'config.json'))
+  let settings
+  try {
+    settings = JSON.parse(fs.readFileSync(configFolder+'config.json'))
+  } catch (e){
+    if (e.name === "SyntaxError") save(DEFAULTS, configFolder)
+    settings = JSON.parse(JSON.stringify(DEFAULTS))
+  }
   if (check(settings) > 0) save(settings, configFolder)
   return settings
 }

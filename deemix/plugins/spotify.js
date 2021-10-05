@@ -354,7 +354,21 @@ class Spotify extends Plugin {
         ...this.credentials,
         ...this.settings
       }, null, 2))
-    let settings = JSON.parse(fs.readFileSync(this.configFolder+'settings.json'))
+    let settings
+    try {
+      settings = JSON.parse(fs.readFileSync(this.configFolder+'settings.json'))
+    } catch (e){
+      if (e.name === "SyntaxError"){
+        fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+          ...this.credentials,
+          ...this.settings
+        }, null, 2))
+      }
+      settings = JSON.parse(JSON.stringify({
+        ...this.credentials,
+        ...this.settings
+      }))
+    }
     this.setSettings(settings)
     this.checkCredentials()
   }
