@@ -35,7 +35,7 @@ function reverseStreamURL(url){
 }
 
 async function streamTrack(outputStream, track, start=0, downloadObject, listener){
-  if (downloadObject.isCanceled) throw new DownloadCanceled
+  if (downloadObject && downloadObject.isCanceled) throw new DownloadCanceled
   let headers = {'User-Agent': USER_AGENT_HEADER}
   let chunkLength = start
   let complete = 0
