@@ -40,10 +40,20 @@ function changeCase(txt, type){
 
 function removeFeatures(title){
   let clean = title
-  if (clean.search(/\(feat\./gi) != -1){
-    const pos = clean.search(/\(feat\./gi)
+  let found = false
+  let pos
+  if (clean.search(/[\s(]?feat\.?\s/gi) != -1){
+    pos = clean.search(/[\s(]?feat\.?\s/gi)
+    found = true
+  }
+  if (clean.search(/[\s(]?ft\.?\s/gi) != -1){
+    pos = clean.search(/[\s(]?ft\.?\s/gi)
+    found = true
+  }
+  const openBracket = clean[pos] == '('
+  if (found) {
     let tempTrack = clean.slice(0, pos)
-    if (clean.includes(')'))
+    if (clean.includes(')') && openBracket)
       tempTrack += clean.slice(clean.indexOf(')', pos+1)+1)
     clean = tempTrack.trim()
     clean = clean.replace(/\s\s+/g, ' ') // remove extra spaces
