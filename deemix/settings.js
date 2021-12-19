@@ -66,6 +66,7 @@ const DEFAULTS = {
   tags: {
     title: true,
     artist: true,
+    artists: true,
     album: true,
     cover: true,
     trackNumber: true,

@@ -20,10 +20,12 @@ function tagID3(path, track, save){
       }
       // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
       // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
-      tag.setFrame('TXXX', {
-        description: 'ARTISTS',
-        value: track.artists
-      })
+      if (save.artists){
+        tag.setFrame('TXXX', {
+          description: 'ARTISTS',
+          value: track.artists
+        })
+      }
     }
   }
 
@@ -161,9 +163,11 @@ function tagFLAC(path, track, save){
       }
       // Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
       // https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
-      track.artists.forEach(artist => {
-        flac.setTag(`ARTISTS=${artist}`)
-      })
+      if (save.artists){
+        track.artists.forEach(artist => {
+          flac.setTag(`ARTISTS=${artist}`)
+        })
+      }
     }
   }
 
