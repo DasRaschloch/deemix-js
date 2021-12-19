@@ -340,7 +340,8 @@ class Track {
     // Change title and artist casing if needed
     if (settings.titleCasing != "nothing"){
       this.title = changeCase(this.title, settings.titleCasing)
-    } else if (settings.artistCasing != "nothing"){
+    }
+    if (settings.artistCasing != "nothing"){
       this.mainArtist.name = changeCase(this.mainArtist.name, settings.artistCasing)
       this.artists.forEach((artist, i) => {
         this.artists[i] = changeCase(artist, settings.artistCasing)
