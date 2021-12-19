@@ -157,7 +157,7 @@ class Album {
     this.explicit = playlist.explicit
     this.date = playlist.date
     this.discTotal = playlist.discTotal
-    this.playlistId = playlist.playlistId
+    this.playlistID = playlist.playlistID
     this.owner = playlist.owner
     this.pic = playlist.pic
     this.isPlaylist = true
