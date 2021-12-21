@@ -349,17 +349,17 @@ class Spotify extends Plugin {
   }
 
   loadSettings(){
-    if (!fs.existsSync(this.configFolder+'settings.json'))
-      fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+    if (!fs.existsSync(this.configFolder+'config.json'))
+      fs.writeFileSync(this.configFolder+'config.json', JSON.stringify({
         ...this.credentials,
         ...this.settings
       }, null, 2))
     let settings
     try {
-      settings = JSON.parse(fs.readFileSync(this.configFolder+'settings.json'))
+      settings = JSON.parse(fs.readFileSync(this.configFolder+'config.json'))
     } catch (e){
       if (e.name === "SyntaxError"){
-        fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+        fs.writeFileSync(this.configFolder+'config.json', JSON.stringify({
           ...this.credentials,
           ...this.settings
         }, null, 2))
@@ -376,7 +376,7 @@ class Spotify extends Plugin {
   saveSettings(newSettings){
     if (newSettings) this.setSettings(newSettings)
     this.checkCredentials()
-    fs.writeFileSync(this.configFolder+'settings.json', JSON.stringify({
+    fs.writeFileSync(this.configFolder+'config.json', JSON.stringify({
       ...this.credentials,
       ...this.settings
     }, null, 2))
