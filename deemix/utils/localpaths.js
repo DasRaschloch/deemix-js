@@ -54,20 +54,22 @@ function getMusicFolder(){
     musicdata = checkPath(musicdata)
   }
   if (process.platform == 'win32' && musicdata === ""){
-    const { execSync } = require('child_process')
-    const musicKeys = ["My Music", "{4BD8D571-6D19-48D3-BE97-422220080E43}"]
-    let regData = execSync('reg.exe query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"').toString().split('\r\n')
-    for (let i = 0; i < regData.length; i++){
-      let line = regData[i]
-      if (line === "") continue
-      if (i == 1) continue
-      line = line.split('    ')
-      if (musicKeys.includes(line[1])){
-        musicdata = line[3] + sep
-        break;
+    try {
+      const { execSync } = require('child_process')
+      const musicKeys = ["My Music", "{4BD8D571-6D19-48D3-BE97-422220080E43}"]
+      let regData = execSync('reg.exe query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"').toString().split('\r\n')
+      for (let i = 0; i < regData.length; i++){
+        let line = regData[i]
+        if (line === "") continue
+        if (i == 1) continue
+        line = line.split('    ')
+        if (musicKeys.includes(line[1])){
+          musicdata = line[3] + sep
+          break;
+        }
       }
-    }
-    musicdata = checkPath(musicdata)
+      musicdata = checkPath(musicdata)
+    } catch {/* empty */}
   }
   if (musicdata === ""){
     musicdata = `${homedata}${sep}Music${sep}`
