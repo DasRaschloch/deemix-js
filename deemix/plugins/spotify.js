@@ -401,7 +401,13 @@ class Spotify extends Plugin {
     let cache
     try {
       cache = JSON.parse(fs.readFileSync(this.configFolder+'cache.json'))
-    } catch {
+    } catch (e){
+      if (e.name === "SyntaxError"){
+        fs.writeFileSync(this.configFolder+'cache.json', JSON.stringify(
+          {tracks: {}, albums: {}},
+          null, 2
+        ))
+      }
       cache = {tracks: {}, albums: {}}
     }
     return cache
