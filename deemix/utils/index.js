@@ -109,7 +109,7 @@ function formatListener(key, data){
     case "finishAddingArtist": return `Finished gathering ${data.name}'s albums (${data.id})`
     case "updateQueue":
       message = `[${data['uuid']}]`
-      if (data.downloaded) message += `  Completed download of ${data.downloadPath.slice(data.extrasPath.length)}`
+      if (data.downloaded) message += ` Completed download of ${data.downloadPath.slice(data.extrasPath.length+1)}`
       if (data.failed) message += ` ${data.data.artist} - ${data.data.title} :: ${data.error}`
       if (data.progress) message += ` Download at ${data.progress}%`
       if (data.conversion) message += ` Conversion at ${data.conversion}%`
