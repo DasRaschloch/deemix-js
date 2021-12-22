@@ -78,7 +78,13 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     id = albumAPI.id
   } else {
     try{
-      albumAPI = await dz.api.get_album(id)
+      let albumAPI_gw_page = await dz.gw.get_album_page(id)
+      if (albumAPI_gw_page.DATA){
+        id = albumAPI_gw_page.DATA.ALB_ID
+        albumAPI = await dz.api.get_album(id)
+      } else {
+        throw new GenerationError(`https://deezer.com/album/${id}`, "Can't find the album")
+      }
     } catch (e){
       console.trace(e)
       throw new GenerationError(`https://deezer.com/album/${id}`, e.message)
