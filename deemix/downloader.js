@@ -129,7 +129,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
   }
 
   if (track.localTrack) {
-    let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.LOCAL)
+    let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.LOCAL, feelingLucky)
     track.urls["MP3_MISC"] = url
     return TrackFormats.LOCAL
   }
@@ -205,7 +205,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     }
   }
   if (is360Format) throw new TrackNot360
-  let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.DEFAULT)
+  let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.DEFAULT, feelingLucky)
   track.urls["MP3_MISC"] = url
   return TrackFormats.DEFAULT
 }

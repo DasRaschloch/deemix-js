@@ -125,8 +125,6 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     collection.push(trackAPI)
   })
 
-  let explicit = albumAPI.explicit_lyrics
-
   return new Collection({
     type: 'album',
     id: id,
@@ -134,7 +132,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     title: albumAPI.title,
     artist: albumAPI.artist.name,
     cover: cover,
-    explicit: explicit,
+    explicit: albumAPI.explicit_lyrics,
     size: totalSize,
     collection: {
       tracks: collection,

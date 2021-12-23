@@ -267,6 +267,25 @@ class Spotify extends Plugin {
         }
         if (cachedTrack.id !== "0") trackAPI = await dz.api.get_track(cachedTrack.id)
       }
+      if (!trackAPI){
+        trackAPI = {
+          id: "0",
+          title: track.name,
+          duration: 0,
+          md5_origin: 0,
+          media_version: 0,
+          filesizes: {},
+          album: {
+            title: track.album.name,
+            md5_image: ""
+          },
+          artist: {
+            id: 0,
+            name: track.artists[0].name,
+            md5_image: ""
+          }
+        }
+      }
       trackAPI.position = pos+1
       collection[pos] = trackAPI
 
