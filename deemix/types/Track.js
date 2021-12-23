@@ -4,7 +4,7 @@ const { Album } = require('./Album.js')
 const { Playlist } = require('./Playlist.js')
 const { Picture } = require('./Picture.js')
 const { Lyrics } = require('./Lyrics.js')
-const { Date } = require('./Date.js')
+const { Date: dzDate } = require('./Date.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 const { changeCase } = require('../utils/index.js')
 const { FeaturesOption } = require('../settings.js')
@@ -35,7 +35,7 @@ class Track {
     this.album = null
     this.trackNumber = "0"
     this.discNumber = "0"
-    this.date = new Date()
+    this.date = new dzDate()
     this.lyrics = null
     this.bpm = 0
     this.contributors = {}
@@ -243,6 +243,16 @@ class Track {
     this.featArtistsString = ""
     if (this.artist.Featured){
       this.featArtistsString = `feat. ${andCommaConcat(this.artist.Featured)}`
+    }
+  }
+
+  async checkAndRenewTrackToken(dz){
+    let now = new Date()
+    let expiration = new Date(this.trackTokenExpiration*1000)
+    if (now > expiration){
+      let newTrack = await dz.gw.get_track_with_fallback(this.id)
+      this.trackToken = newTrack.TRACK_TOKEN
+      this.trackTokenExpiration = newTrack.TRACK_TOKEN_EXPIRE
     }
   }
 

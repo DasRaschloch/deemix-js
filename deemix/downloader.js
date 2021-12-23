@@ -155,6 +155,8 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     formats = {...formats_non_360}
   }
 
+  // Check and renew trackToken before starting the check
+  await track.checkAndRenewTrackToken(dz)
   for (let i = 0; i < Object.keys(formats).length; i++){
     // Check bitrates
     let formatNumber = Object.keys(formats).reverse()[i]
