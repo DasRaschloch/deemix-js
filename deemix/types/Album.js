@@ -82,7 +82,7 @@ class Album {
     })
 
     this.trackTotal = albumAPI.nb_tracks
-    this.recordType = albumAPI.record_type
+    this.recordType = albumAPI.record_type || this.recordType
 
     this.barcode = albumAPI.upc || this.barcode
     this.label = albumAPI.label || this.label
@@ -97,7 +97,7 @@ class Album {
     }
 
     this.discTotal = albumAPI.nb_disk || "1"
-    this.copyright = albumAPI.copyright
+    this.copyright = albumAPI.copyright || ""
 
     if (this.pic.md5 == ""){
       if (albumAPI.md5_image){

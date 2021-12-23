@@ -99,7 +99,7 @@ function tagID3(path, track, save){
   })
   if (involvedPeople.length && save.involvedPeople) tag.setFrame('IPLS', involvedPeople)
 
-  if (save.copyright) tag.setFrame('TCOP', track.copyright)
+  if (save.copyright && track.copyright) tag.setFrame('TCOP', track.copyright)
   if (save.savePlaylistAsCompilation && track.playlist || track.album.recordType == "compile")
     tag.setFrame('TCMP', '1')
 
@@ -221,7 +221,7 @@ function tagFLAC(path, track, save){
     }
   })
 
-  if (save.copyright) flac.setTag(`COPYRIGHT=${track.copyright}`)
+  if (save.copyright && track.copyright) flac.setTag(`COPYRIGHT=${track.copyright}`)
   if (save.savePlaylistAsCompilation && track.playlist || track.album.recordType == "compile")
     flac.setTag('COMPILATION=1')
 
