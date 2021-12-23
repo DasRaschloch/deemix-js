@@ -89,7 +89,8 @@ const ErrorMessages = {
     noSpaceLeft: "No space left on target drive, clean up some space for the tracks.",
     albumDoesntExists: "Track's album does not exsist, failed to gather info.",
     notLoggedIn: "You need to login to download tracks.",
-    wrongGeolocation: "Your account can't stream the track from your current country."
+    wrongGeolocation: "Your account can't stream the track from your current country.",
+    wrongGeolocationNoAlternative: "Your account can't stream the track from your current country and no alternative found."
 }
 
 class DownloadFailed extends DownloadError {

@@ -27,6 +27,7 @@ class Track {
     this.trackTokenExpiration = 0
     this.duration = 0
     this.fallbackID = "0"
+    this.albumsFallback = []
     this.filesizes = {}
     this.localTrack = false
     this.mainArtist = null
@@ -221,6 +222,13 @@ class Track {
         this.artist[artist.role].push(artist.name)
       }
     })
+
+    if (trackAPI.alternative_albums){
+      trackAPI.alternative_albums.data.forEach(album => {
+        if (album.RIGHTS.STREAM_ADS_AVAILABLE || album.RIGHTS.STREAM_SUB_AVAILABLE)
+          this.albumsFallback.push(album.ALB_ID)
+      })
+    }
   }
 
   removeDuplicateArtists(){

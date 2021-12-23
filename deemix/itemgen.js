@@ -37,6 +37,8 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
     cover = `https://e-cdns-images.dzcdn.net/images/cover/${trackAPI.md5_image}/75x75-000000-80-0-0.jpg`
   }
 
+  delete trackAPI.track_token
+
   return new Single({
     type: 'track',
     id: id,
@@ -118,6 +120,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   let collection = []
   tracksArray.forEach((trackAPI, pos) => {
     trackAPI = map_track(trackAPI)
+    delete trackAPI.track_token
     trackAPI.position = pos+1
     collection.push(trackAPI)
   })
@@ -178,6 +181,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
     trackAPI = map_track(trackAPI)
     if (trackAPI.explicit_lyrics)
       playlistAPI.explicit = true
+    delete trackAPI.track_token
     trackAPI.position = pos+1
     collection.push(trackAPI)
   });

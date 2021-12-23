@@ -41,6 +41,7 @@ const DEFAULTS = {
   feelingLucky: false,
   fallbackBitrate: false,
   fallbackSearch: false,
+  fallbackISRC: false,
   logErrors: true,
   logSearched: false,
   overwriteFile: OverwriteOption.DONT_OVERWRITE,

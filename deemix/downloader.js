@@ -332,7 +332,7 @@ class Downloader {
       )
     }catch (e){
       if (e.name === "WrongLicense") { throw new DownloadFailed("wrongLicense")}
-      if (e.name === "WrongGeolocation") { throw new DownloadFailed("wrongGeolocation")}
+      if (e.name === "WrongGeolocation") { throw new DownloadFailed("wrongGeolocation", track)}
       if (e.name === "PreferredBitrateNotFound") { throw new DownloadFailed("wrongBitrate", track) }
       if (e.name === "TrackNot360") { throw new DownloadFailed("no360RA") }
       console.trace(e)
@@ -535,17 +535,35 @@ class Downloader {
           if (track.fallbackID != 0){
             this.warn(itemData, e.errid, 'fallback')
             let newTrack = await this.dz.gw.get_track_with_fallback(track.fallbackID)
+            newTrack = map_track(newTrack)
             track.parseEssentialData(newTrack)
-            await track.retriveFilesizes(this.dz)
             return await this.downloadWrapper(extraData, track)
+          }
+          if (track.albumsFallback.length && this.settings.fallbackISRC){
+            let newAlbumID = track.albumsFallback.pop()
+            let newAlbum = await this.dz.gw.get_album_page(newAlbumID)
+            let fallbackID = 0
+            for (let newTrack of newAlbum.SONGS.data) {
+              if (newTrack.ISRC === track.ISRC) {
+                fallbackID = newTrack.SNG_ID
+                break;
+              }
+            }
+            if (fallbackID != 0){
+              this.warn(itemData, e.errid, 'fallback')
+              let newTrack = await this.dz.gw.get_track_with_fallback(fallbackID)
+              newTrack = map_track(newTrack)
+              track.parseEssentialData(newTrack)
+              return await this.downloadWrapper(extraData, track)
+            }
           }
           if (!track.searched && this.settings.fallbackSearch){
             this.warn(itemData, e.errid, 'search')
             let searchedID = await this.dz.api.get_track_id_from_metadata(track.mainArtist.name, track.title, track.album.title)
             if (searchedID != "0"){
               let newTrack = await this.dz.gw.get_track_with_fallback(searchedID)
+              newTrack = map_track(newTrack)
               track.parseEssentialData(newTrack)
-              await track.retriveFilesizes(this.dz)
               track.searched = true
               this.log(itemData, "searchFallback")
               return await this.downloadWrapper(extraData, track)
