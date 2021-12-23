@@ -516,13 +516,6 @@ class Downloader {
 
   async downloadWrapper(extraData, track){
     const { trackAPI } = extraData
-    /*
-    if (trackAPI_gw._EXTRA_TRACK){
-      extraData.trackAPI = {...trackAPI_gw._EXTRA_TRACK}
-      delete extraData.trackAPI_gw._EXTRA_TRACK
-      delete trackAPI_gw._EXTRA_TRACK
-    }
-    */
     // Temp metadata to generate logs
     let itemData = {
       id: trackAPI.id,

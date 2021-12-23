@@ -168,7 +168,7 @@ class Spotify extends Plugin {
       explicit: playlistAPI.explicit,
       size: tracklist.length,
       collection: {
-        tracks_gw: [],
+        tracks: [],
         playlistAPI: playlistAPI
       },
       plugin: 'spotify',
@@ -267,27 +267,8 @@ class Spotify extends Plugin {
         }
         if (cachedTrack.id !== "0") trackAPI = await dz.api.get_track(cachedTrack.id)
       }
-
-      let deezerTrack
-      if (!trackAPI){
-        deezerTrack = {
-          SNG_ID: "0",
-          SNG_TITLE: track.name,
-          DURATION: 0,
-          MD5_ORIGIN: 0,
-          MEDIA_VERSION: 0,
-          FILESIZE: 0,
-          ALB_TITLE: track.album.name,
-          ALB_PICTURE: "",
-          ART_ID: 0,
-          ART_NAME: track.artists[0].name
-        }
-      } else {
-        deezerTrack = await dz.gw.get_track_with_fallback(trackAPI.id)
-      }
-      deezerTrack._EXTRA_TRACK = trackAPI
-      deezerTrack.POSITION = pos+1
-      collection[pos] = deezerTrack
+      trackAPI.position = pos+1
+      collection[pos] = trackAPI
 
       conversionNext += (1 / downloadObject.size) * 100
       if (Math.round(conversionNext) != conversion && Math.round(conversionNext) % 2 == 0){
@@ -302,7 +283,7 @@ class Spotify extends Plugin {
 
     await q.drain()
 
-    downloadObject.collection.tracks_gw = collection
+    downloadObject.collection.tracks = collection
     downloadObject.size = collection.length
     downloadObject = new Collection(downloadObject.toDict())
     if (listener) listener.send("finishConversion", downloadObject.getSlimmedDict())
