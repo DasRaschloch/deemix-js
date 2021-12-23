@@ -111,6 +111,10 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
   async function getCorrectURL(track, formatName, formatNumber, feelingLucky){
     // Check the track with the legit method
     let url
+    wrongLicense = (
+      (formatName === "FLAC" || formatName.startsWith("MP4_RA")) && !dz.current_user.can_stream_lossless ||
+      formatName === "MP3_320" && !dz.current_user.can_stream_hq
+    )
     if (track.filesizes[`${formatName.toLowerCase()}`] && track.filesizes[`${formatName.toLowerCase()}`] != "0"){
       try {
         url = await dz.get_track_url(track.trackToken, formatName)
