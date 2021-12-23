@@ -39,7 +39,8 @@ class Album {
     // Getting artist image ID
     // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
     let art_pic = albumAPI.artist.picture_small
-    art_pic = art_pic.slice(art_pic.indexOf('artist/')+7, -24)
+    if (art_pic) art_pic = art_pic.slice(art_pic.indexOf('artist/')+7, -24)
+    else art_pic = ""
     this.mainArtist = new Artist(
       albumAPI.artist.id,
       albumAPI.artist.name,
