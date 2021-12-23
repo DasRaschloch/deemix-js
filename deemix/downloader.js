@@ -8,6 +8,7 @@ const { generatePath, generateAlbumName, generateArtistName, generateDownloadObj
 const { PreferredBitrateNotFound, TrackNot360, DownloadFailed, ErrorMessages, DownloadCanceled} = require('./errors.js')
 const { TrackFormats } = require('deezer-js')
 const { WrongLicense, WrongGeolocation } = require('deezer-js').errors
+const { map_track } = require('deezer-js').utils
 const got = require('got')
 const fs = require('fs')
 const { tmpdir } = require('os')
@@ -72,7 +73,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
   return path
 }
 
-async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, uuid, listener){
+async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, feelingLucky, uuid, listener){
   preferredBitrate = parseInt(preferredBitrate)
 
   let falledBack = false
@@ -88,15 +89,14 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
         url,
         { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000, https: {rejectUnauthorized: false} }
       ).on("response", (response)=>{
-        track.filesizes[`FILESIZE_${formatName}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
-        track.filesizes[`FILESIZE_${formatName}_TESTED`] = true
+        track.filesizes[`${formatName.toLowerCase()}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
         request.cancel()
       })
 
       await request
     } catch (e){
       if (e.isCanceled) {
-        if (track.filesizes[`FILESIZE_${formatName}`] == 0) return false
+        if (track.filesizes[`${formatName.toLowerCase()}`] == 0) return false
         return true
       }
       if (e instanceof got.ReadError || e instanceof got.TimeoutError){
@@ -108,19 +108,19 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     }
   }
 
-  async function getCorrectURL(track, formatName, formatNumber){
+  async function getCorrectURL(track, formatName, formatNumber, feelingLucky){
     // Check the track with the legit method
     let url
-    try {
-      url = await dz.get_track_url(track.trackToken, formatName)
-      if (await testURL(track, url, formatName, formatNumber)) return url
-      url = undefined
-    } catch (e){
-      wrongLicense = (e.name === "WrongLicense")
-      isGeolocked = (e.name === "WrongGeolocation")
+    if (track.filesizes[`${formatName.toLowerCase()}`] && track.filesizes[`${formatName.toLowerCase()}`] != "0"){
+      try {
+        url = await dz.get_track_url(track.trackToken, formatName)
+      } catch (e){
+        wrongLicense = (e.name === "WrongLicense")
+        isGeolocked = (e.name === "WrongGeolocation")
+      }
     }
     // Fallback to old method
-    if (!url){
+    if (!url && feelingLucky){
       url = generateCryptedStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber)
       if (await testURL(track, url, formatName, formatNumber)) return url
       url = undefined
@@ -164,16 +164,17 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     if (formatNumber > preferredBitrate) { continue }
 
     let currentTrack = track
-    let url = await getCorrectURL(currentTrack, formatName, formatNumber)
+    let url = await getCorrectURL(currentTrack, formatName, formatNumber, feelingLucky)
     let newTrack
     do {
       if (!url && hasAlternative){
         newTrack = await dz.gw.get_track_with_fallback(currentTrack.fallbackID)
+        newTrack = map_track(newTrack)
         currentTrack = new Track()
         currentTrack.parseEssentialData(newTrack)
         hasAlternative = currentTrack.fallbackID != 0
       }
-      if (!url) url = await getCorrectURL(currentTrack, formatName, formatNumber)
+      if (!url) url = await getCorrectURL(currentTrack, formatName, formatNumber, feelingLucky)
     } while (!url && hasAlternative)
 
     if (url) {
@@ -293,9 +294,7 @@ class Downloader {
         await track.parseData(
           this.dz,
           trackAPI.id,
-          null, // trackAPI_gw
           trackAPI,
-          null, // albumAPI_gw
           albumAPI,
           playlistAPI
         )
@@ -326,7 +325,7 @@ class Downloader {
         this.dz,
         track,
         this.bitrate,
-        this.settings.fallbackBitrate,
+        this.settings.fallbackBitrate, this.settings.feelingLucky,
         this.downloadObject.uuid, this.listener
       )
     }catch (e){

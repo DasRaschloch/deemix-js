@@ -38,6 +38,7 @@ const DEFAULTS = {
   illegalCharacterReplacer: "_",
   queueConcurrency: 3,
   maxBitrate: String(TrackFormats.MP3_320),
+  feelingLucky: false,
   fallbackBitrate: false,
   fallbackSearch: false,
   logErrors: true,

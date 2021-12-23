@@ -51,6 +51,7 @@ class Track {
     this.artistsString = ""
     this.mainArtistsString = ""
     this.featArtistsString = ""
+    this.urls = {}
   }
 
   parseEssentialData(trackAPI){
@@ -64,6 +65,7 @@ class Track {
     this.fallbackID = "0"
     if (trackAPI.fallback_id) this.fallbackID = trackAPI.fallback_id
     this.localTrack = parseInt(this.id) < 0
+    this.urls = {}
   }
 
   async parseData(dz, id, trackAPI, albumAPI, playlistAPI){
