@@ -1,5 +1,3 @@
-const { LyricsStatus } = require('deezer-js').gw
-
 const { removeDuplicateArtists, removeFeatures } = require('../utils/index.js')
 const { Artist } = require('./Artist.js')
 const { Date } = require('./Date.js')
@@ -88,58 +86,33 @@ class Album {
     this.barcode = albumAPI.upc || this.barcode
     this.label = albumAPI.label || this.label
     this.explicit = Boolean(albumAPI.explicit_lyrics || false)
-    if (albumAPI.release_date){
-      this.date.year = albumAPI.release_date.slice(0,4)
-      this.date.month = albumAPI.release_date.slice(5,7)
-      this.date.day = albumAPI.release_date.slice(8,10)
+    let release_date = albumAPI.release_date
+    if (albumAPI.physical_release_date) release_date = albumAPI.physical_release_date
+    if (release_date){
+      this.date.year = release_date.slice(0,4)
+      this.date.month = release_date.slice(5,7)
+      this.date.day = release_date.slice(8,10)
       this.date.fixDayMonth()
     }
 
     this.discTotal = albumAPI.nb_disk || "1"
     this.copyright = albumAPI.copyright
 
-    if (this.pic.md5 == "" && albumAPI.cover_small){
-      // Getting album cover MD5
-      // ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
-      let alb_pic = albumAPI.cover_small
-      this.pic.md5 = alb_pic.slice( alb_pic.indexOf('cover/')+6, -24 )
+    if (this.pic.md5 == ""){
+      if (albumAPI.md5_image){
+        this.pic.md5 = albumAPI.md5_image
+      }else if (albumAPI.cover_small){
+        // Getting album cover MD5
+        // ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
+        let alb_pic = albumAPI.cover_small
+        this.pic.md5 = alb_pic.slice( alb_pic.indexOf('cover/')+6, -24 )
+      }
     }
 
     if (albumAPI.genres && albumAPI.genres.data && albumAPI.genres.data.length > 0) {
       albumAPI.genres.data.forEach(genre => {
         this.genre.push(genre.name)
-      });
-    }
-  }
-
-  parseAlbumGW(albumAPI_gw){
-    this.title = albumAPI_gw.ALB_TITLE
-    this.mainArtist = new Artist(
-      albumAPI_gw.ART_ID,
-      albumAPI_gw.ART_NAME,
-      "Main"
-    )
-
-    this.artists = [albumAPI_gw.ART_NAME]
-    this.trackTotal = albumAPI_gw.NUMBER_TRACK
-    this.discTotal = albumAPI_gw.NUMBER_DISK
-    this.label = albumAPI_gw.LABEL_NAME || this.label
-
-    let explicitLyricsStatus = albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS
-    this.explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(explicitLyricsStatus)
-
-    this.addExtraAlbumGWData(albumAPI_gw)
-  }
-
-  addExtraAlbumGWData(albumAPI_gw){
-    if (this.pic.md5 == "" && albumAPI_gw.ALB_PICTURE){
-      this.pic.md5 = albumAPI_gw.ALB_PICTURE
-    }
-    if (albumAPI_gw.PHYSICAL_RELEASE_DATE){
-      this.date.year = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
-      this.date.month = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
-      this.date.day = albumAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
-      this.date.fixDayMonth()
+      })
     }
   }
 

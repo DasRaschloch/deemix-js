@@ -1,4 +1,4 @@
-const got = require('got')
+const { map_track, map_album } = require('deezer-js').utils
 const { Artist } = require('./Artist.js')
 const { Album } = require('./Album.js')
 const { Playlist } = require('./Playlist.js')
@@ -8,7 +8,7 @@ const { Date } = require('./Date.js')
 const { VARIOUS_ARTISTS } = require('./index.js')
 const { changeCase } = require('../utils/index.js')
 const { FeaturesOption } = require('../settings.js')
-const { TrackError, NoDataToParse, AlbumDoesntExists } = require('../errors.js');
+const { NoDataToParse, AlbumDoesntExists } = require('../errors.js');
 
 const {
   generateReplayGainString,
@@ -24,6 +24,7 @@ class Track {
     this.MD5 = ""
     this.mediaVersion = ""
     this.trackToken = ""
+    this.trackTokenExpiration = 0
     this.duration = 0
     this.fallbackID = "0"
     this.filesizes = {}
@@ -50,91 +51,55 @@ class Track {
     this.artistsString = ""
     this.mainArtistsString = ""
     this.featArtistsString = ""
-    this.urls = {}
   }
 
-  parseEssentialData(trackAPI_gw, trackAPI){
-    this.id = String(trackAPI_gw.SNG_ID)
-    this.duration = trackAPI_gw.DURATION
-    this.trackToken = trackAPI_gw.TRACK_TOKEN
-    this.MD5 = trackAPI_gw.MD5_ORIGIN
-    if (!this.MD5){
-      if (trackAPI && trackAPI.md5_origin){
-        this.MD5 = trackAPI.md5_origin
-      }/*else{
-        throw new MD5NotFound
-      }*/
-    }
-    this.mediaVersion = trackAPI_gw.MEDIA_VERSION
+  parseEssentialData(trackAPI){
+    this.id = String(trackAPI.id)
+    this.duration = trackAPI.duration
+    this.trackToken = trackAPI.track_token
+    this.trackTokenExpiration = trackAPI.track_token_expire
+    this.MD5 = trackAPI.md5_origin
+    this.mediaVersion = trackAPI.media_version
+    this.filesizes = trackAPI.filesizes
     this.fallbackID = "0"
-    if (trackAPI_gw.FALLBACK){
-      this.fallbackID = trackAPI_gw.FALLBACK.SNG_ID
-    }
+    if (trackAPI.fallback_id) this.fallbackID = trackAPI.fallback_id
     this.localTrack = parseInt(this.id) < 0
-    this.urls = {}
   }
 
-  async retriveFilesizes(dz){
-    let guest_sid = await dz.cookie_jar.getCookies('https://www.deezer.com')
-    guest_sid = guest_sid.find(element => element.key === 'sid').value
-    let result_json
-    try{
-      result_json = await got.post("https://api.deezer.com/1.0/gateway.php",{
-        searchParams:{
-          api_key: "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
-          sid: guest_sid,
-          input: '3',
-          output: '3',
-          method: 'song_getData'
-        },
-        https: {rejectUnauthorized: false},
-        json: {sng_id: this.id},
-        headers: dz.http_headers,
-        timeout: 30000
-      }).json()
-    }catch (e){
-      await new Promise(r => setTimeout(r, 2000)) // sleep(2000ms)
-      return this.retriveFilesizes(dz)
-    }
-    if (result_json.error.length){ throw new TrackError(result_json.error) }
-    const response = result_json.results
-    let filesizes = {}
-    Object.entries(response).forEach((entry) => {
-      let [key, value] = entry
-      if (key.startsWith("FILESIZE_")){
-        filesizes[key] = value
-        filesizes[key+"_TESTED"] = false
+  async parseData(dz, id, trackAPI, albumAPI, playlistAPI){
+    if (id && (!trackAPI || trackAPI && !trackAPI.track_token)) {
+      let trackAPI_new = await dz.gw.get_track_with_fallback(id)
+      trackAPI_new = map_track(trackAPI_new)
+      if (!trackAPI) trackAPI = {}
+      trackAPI = {...trackAPI_new, ...trackAPI}
+    } else if (!trackAPI) { throw new NoDataToParse }
+
+    this.parseEssentialData(trackAPI)
+
+    // only public api has bpm
+    if (!trackAPI.bpm && !this.localTrack){
+      try {
+        let trackAPI_new = await dz.api.get_track(trackAPI.id)
+        trackAPI_new.release_date = trackAPI.release_date
+        trackAPI = {...trackAPI, ...trackAPI_new}
       }
-    })
-    this.filesizes = filesizes
-  }
-
-  async parseData(dz, id, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI, playlistAPI){
-    if (id && !trackAPI_gw) { trackAPI_gw = await dz.gw.get_track_with_fallback(id) }
-    else if (!trackAPI_gw) { throw new NoDataToParse }
-
-    if (!trackAPI) {
-      try { trackAPI = await dz.api.get_track(trackAPI_gw.SNG_ID) }
-      catch { trackAPI = null }
+      catch { /*empty*/ }
     }
-
-    this.parseEssentialData(trackAPI_gw, trackAPI)
 
     if (this.localTrack){
-      this.parseLocalTrackData(trackAPI_gw)
+      this.parseLocalTrackData(trackAPI)
     }else{
-      await this.retriveFilesizes(dz)
-      this.parseTrackGW(trackAPI_gw)
+      this.parseTrack(trackAPI)
 
       // Get Lyrics Data
-      if (!trackAPI_gw.LYRICS && this.lyrics.id != "0"){
-        try { trackAPI_gw.LYRICS = await dz.gw.get_track_lyrics(this.id) }
+      if (!trackAPI.lyrics && this.lyrics.id != "0"){
+        try { trackAPI.lyrics = await dz.gw.get_track_lyrics(this.id) }
         catch { this.lyrics.id = "0" }
       }
-      if (this.lyrics.id != "0"){ this.lyrics.parseLyrics(trackAPI_gw.LYRICS) }
+      if (this.lyrics.id != "0"){ this.lyrics.parseLyrics(trackAPI.lyrics) }
 
       // Parse Album Data
-      this.album = new Album(trackAPI_gw.ALB_ID, trackAPI_gw.ALB_TITLE, trackAPI_gw.ALB_PICTURE || "")
+      this.album = new Album(trackAPI.album.id, trackAPI.album.title, trackAPI.album.md5_origin || "")
 
       // Get album Data
       if (!albumAPI){
@@ -143,35 +108,35 @@ class Track {
       }
 
       // Get album_gw Data
-      if (!albumAPI_gw){
-        try { albumAPI_gw = await dz.gw.get_album(this.album.id) }
-        catch { albumAPI_gw = null }
+      // Only gw has disk number
+      if (!albumAPI || albumAPI && !albumAPI.nb_disk){
+        let albumAPI_gw
+        try {
+          albumAPI_gw = await dz.gw.get_album(this.album.id)
+          albumAPI_gw = map_album(albumAPI_gw)
+        } catch { albumAPI_gw = {} }
+        if (!albumAPI) albumAPI = {}
+        albumAPI = {...albumAPI_gw, ...albumAPI}
       }
 
-      if (albumAPI){
-        this.album.parseAlbum(albumAPI)
-      }else if (albumAPI_gw){
-        this.album.parseAlbumGW(albumAPI_gw)
-        // albumAPI_gw doesn't contain the artist cover
-        // Getting artist image ID
-        // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
+      if (!albumAPI) throw new AlbumDoesntExists
+      this.album.parseAlbum(albumAPI)
+
+      // albumAPI_gw doesn't contain the artist cover
+      // Getting artist image ID
+      // ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
+      if (!this.album.mainArtist.pic.md5){
         const artistAPI = await dz.api.get_artist(this.album.mainArtist.id)
         this.album.mainArtist.pic.md5 = artistAPI.picture_small.slice( artistAPI.picture_small.search('artist/')+7, -24 )
-      }else{
-        throw new AlbumDoesntExists
       }
 
       // Fill missing data
-      if (albumAPI_gw) this.album.addExtraAlbumGWData(albumAPI_gw)
       if (this.album.date && !this.date) this.date = this.album.date
-      if (!this.album.discTotal) this.album.discTotal = albumAPI_gw.NUMBER_DISK || "1"
-      if (!this.copyright) this.copyright = albumAPI_gw.COPYRIGHT
-      if (trackAPI_gw.GENRES){
-        trackAPI_gw.GENRES.forEach((genre) => {
+      if (trackAPI.genres){
+        trackAPI.genres.forEach((genre) => {
           if (!this.album.genre.includes(genre)) this.album.genre.push(genre)
         })
       }
-      this.parseTrack(trackAPI)
     }
 
     // Remove unwanted charaters in track name
@@ -182,8 +147,7 @@ class Track {
     if (!this.artist.Main.length){
       this.artist.Main = [this.mainArtist.name]
     }
-
-    this.position = trackAPI_gw.POSITION
+    this.position = trackAPI.position
 
     if (playlistAPI) { this.playlist = new Playlist(playlistAPI) }
 
@@ -191,19 +155,19 @@ class Track {
     return this
   }
 
-  parseLocalTrackData(trackAPI_gw){
+  parseLocalTrackData(trackAPI){
     // Local tracks has only the trackAPI_gw page and
     // contains only the tags provided by the file
-    this.title = trackAPI_gw.SNG_TITLE
-    this.album = new Album(trackAPI_gw.ALB_TITLE)
+    this.title = trackAPI.title
+    this.album = new Album(trackAPI.album.title)
     this.album.pic = new Picture(
-        trackAPI_gw.ALB_PICTURE || "",
+        trackAPI.md5_image || "",
         "cover"
     )
-    this.mainArtist = new Artist("0", trackAPI_gw.ART_NAME, "Main")
-    this.artists = [trackAPI_gw.ART_NAME]
+    this.mainArtist = new Artist("0", trackAPI.artist.name, "Main")
+    this.artists = [trackAPI.artist.name]
     this.artist = {
-        'Main': [trackAPI_gw.ART_NAME]
+        'Main': [trackAPI.artist.name]
     }
     this.album.artist = this.artist
     this.album.artists = this.artists
@@ -211,44 +175,34 @@ class Track {
     this.album.mainArtist = this.mainArtist
   }
 
-  parseTrackGW(trackAPI_gw){
-    this.title = trackAPI_gw.SNG_TITLE.trim()
-    if (trackAPI_gw.VERSION && !this.title.includes(trackAPI_gw.VERSION.trim())){
-      this.title += ` ${trackAPI_gw.VERSION.trim()}`
-    }
-
-    this.discNumber = trackAPI_gw.DISK_NUMBER
-    this.explicit = Boolean(parseInt(trackAPI_gw.EXPLICIT_LYRICS || "0"))
-    this.copyright = trackAPI_gw.COPYRIGHT
-    if (trackAPI_gw.GAIN) this.replayGain = generateReplayGainString(trackAPI_gw.GAIN)
-    this.ISRC = trackAPI_gw.ISRC
-    this.trackNumber = trackAPI_gw.TRACK_NUMBER
-    this.contributors = trackAPI_gw.SNG_CONTRIBUTORS
-    this.rank = trackAPI_gw.RANK_SNG
-
-    this.lyrics = new Lyrics(trackAPI_gw.LYRICS_ID || "0")
-
-    this.mainArtist = new Artist(
-      trackAPI_gw.ART_ID,
-      trackAPI_gw.ART_NAME,
-      "Main",
-      trackAPI_gw.ART_PICTRUE
-    )
-
-    if (trackAPI_gw.PHYSICAL_RELEASE_DATE){
-      this.date.day = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(8,10)
-      this.date.month = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(5,7)
-      this.date.year = trackAPI_gw.PHYSICAL_RELEASE_DATE.slice(0,4)
-      this.date.fixDayMonth()
-    }
-  }
-
   parseTrack(trackAPI){
+    this.title = trackAPI.title
+
+    this.discNumber = trackAPI.disk_number
+    this.explicit = trackAPI.explicit_lyrics
+    this.copyright = trackAPI.copyright
+    if (trackAPI.gain) this.replayGain = generateReplayGainString(trackAPI.gain)
+    this.ISRC = trackAPI.isrc
+    this.trackNumber = trackAPI.track_position
+    this.contributors = trackAPI.song_contributors
+    this.rank = trackAPI.rank
     this.bpm = trackAPI.bpm
 
-    if (!this.replayGain && trackAPI.gain) this.replayGain = generateReplayGainString(trackAPI.gain)
-    if (!this.explicit) this.explicit = trackAPI.explicit_lyrics
-    if (!this.discNumber) this.discNumber = trackAPI.disk_number
+    this.lyrics = new Lyrics(trackAPI.lyrics_id || "0")
+
+    this.mainArtist = new Artist(
+      trackAPI.artist.id,
+      trackAPI.artist.name,
+      "Main",
+      trackAPI.artist.md5_image
+    )
+
+    if (trackAPI.physical_release_date){
+      this.date.day = trackAPI.physical_release_date.slice(8,10)
+      this.date.month = trackAPI.physical_release_date.slice(5,7)
+      this.date.year = trackAPI.physical_release_date.slice(0,4)
+      this.date.fixDayMonth()
+    }
 
     trackAPI.contributors.forEach(artist => {
       const isVariousArtists = String(artist.id) == VARIOUS_ARTISTS
@@ -264,7 +218,7 @@ class Track {
           this.artist[artist.role] = []
         this.artist[artist.role].push(artist.name)
       }
-    });
+    })
   }
 
   removeDuplicateArtists(){

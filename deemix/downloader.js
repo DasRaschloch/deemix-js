@@ -235,7 +235,6 @@ class Downloader {
     if (!this.downloadObject.isCanceled){
       if (this.downloadObject.__type__ === "Single"){
         let track = await this.downloadWrapper({
-          trackAPI_gw: this.downloadObject.single.trackAPI_gw,
           trackAPI: this.downloadObject.single.trackAPI,
           albumAPI: this.downloadObject.single.albumAPI
         })
@@ -246,14 +245,14 @@ class Downloader {
         let q = queue(async (data) => {
           let {track, pos} = data
           tracks[pos] = await this.downloadWrapper({
-            trackAPI_gw: track,
+            trackAPI: track,
             albumAPI: this.downloadObject.collection.albumAPI,
             playlistAPI: this.downloadObject.collection.playlistAPI
           })
         }, this.settings.queueConcurrency)
 
-        if (this.downloadObject.collection.tracks_gw.length){
-          this.downloadObject.collection.tracks_gw.forEach((track, pos) => {
+        if (this.downloadObject.collection.tracks.length){
+          this.downloadObject.collection.tracks.forEach((track, pos) => {
             q.push({track, pos})
           })
 
@@ -275,15 +274,15 @@ class Downloader {
 
   async download(extraData, track){
     let returnData = {}
-    const { trackAPI_gw, trackAPI, albumAPI, playlistAPI } = extraData
-    trackAPI_gw.SIZE = this.downloadObject.size
+    const { trackAPI, albumAPI, playlistAPI } = extraData
+    trackAPI.size = this.downloadObject.size
     if (this.downloadObject.isCanceled) throw new DownloadCanceled
-    if (trackAPI_gw.SNG_ID == "0") throw new DownloadFailed("notOnDeezer")
+    if (parseInt(trackAPI.id) == 0) throw new DownloadFailed("notOnDeezer")
 
     let itemData = {
-      id: trackAPI_gw.SNG_ID,
-      title: trackAPI_gw.SNG_TITLE.trim(),
-      artist: trackAPI_gw.ART_NAME
+      id: trackAPI.id,
+      title: trackAPI.title,
+      artist: trackAPI.artist.name
     }
 
     // Generate track object
@@ -293,8 +292,8 @@ class Downloader {
       try{
         await track.parseData(
           this.dz,
-          trackAPI_gw.SNG_ID,
-          trackAPI_gw,
+          trackAPI.id,
+          null, // trackAPI_gw
           trackAPI,
           null, // albumAPI_gw
           albumAPI,
@@ -517,20 +516,20 @@ class Downloader {
   }
 
   async downloadWrapper(extraData, track){
-    const { trackAPI_gw } = extraData
+    const { trackAPI } = extraData
+    /*
     if (trackAPI_gw._EXTRA_TRACK){
       extraData.trackAPI = {...trackAPI_gw._EXTRA_TRACK}
       delete extraData.trackAPI_gw._EXTRA_TRACK
       delete trackAPI_gw._EXTRA_TRACK
     }
+    */
     // Temp metadata to generate logs
     let itemData = {
-      id: trackAPI_gw.SNG_ID,
-      title: trackAPI_gw.SNG_TITLE.trim(),
-      artist: trackAPI_gw.ART_NAME
+      id: trackAPI.id,
+      title: trackAPI.title,
+      artist: trackAPI.artist.name
     }
-    if (trackAPI_gw.VERSION && trackAPI_gw.SNG_TITLE.includes(trackAPI_gw.VERSION))
-      itemData.title += ` ${trackAPI_gw.VERSION.trim()}`
 
     let result
     try {

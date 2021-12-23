@@ -3,53 +3,49 @@ const {
   Collection
 } = require('./types/DownloadObjects.js')
 const { GenerationError, ISRCnotOnDeezer, InvalidID, NotYourPrivatePlaylist } = require('./errors.js');
-const { LyricsStatus } = require('deezer-js').gw
-const { map_user_playlist } = require('deezer-js').utils
+const { map_user_playlist, map_track, map_album } = require('deezer-js').utils
 const { each } = require('async')
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
-  // Check if is an isrc: url
-  if (String(id).startsWith("isrc")){
-    try {
-      trackAPI = await dz.api.get_track(id)
-    } catch (e){
-      console.trace(e)
-      throw new GenerationError(`https://deezer.com/track/${id}`, e.message)
-    }
-
-    if (trackAPI.id && trackAPI.title){
-      id = trackAPI.id
+  // Get essential track info
+  if (!trackAPI){
+    if (String(id).startsWith("isrc") || parseInt(id) > 0){
+      try {
+        trackAPI = await dz.api.get_track(id)
+      } catch (e){
+        console.trace(e)
+        throw new GenerationError(`https://deezer.com/track/${id}`, e.message)
+      }
+      // Check if is an isrc: url
+      if (String(id).startsWith("isrc")){
+        if (trackAPI.id && trackAPI.title) id = trackAPI.id
+        else throw new ISRCnotOnDeezer(`https://deezer.com/track/${id}`)
+      }
     } else {
-      throw new ISRCnotOnDeezer(`https://deezer.com/track/${id}`)
+      let trackAPI_gw = await dz.gw.get_track(id)
+      trackAPI = map_track(trackAPI_gw)
     }
+  } else {
+    id = trackAPI.id
   }
   if (!(/^-?\d+$/.test(id))) throw new InvalidID(`https://deezer.com/track/${id}`)
 
-  // Get essential track info
-  let trackAPI_gw
-  try {
-    trackAPI_gw = await dz.gw.get_track_with_fallback(id)
-  } catch (e){
-    console.trace(e)
-    throw new GenerationError(`https://deezer.com/track/${id}`, e.message)
+  let cover
+  if (trackAPI.album.cover_small){
+    cover = trackAPI.album.cover_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg'
+  }else{
+    cover = `https://e-cdns-images.dzcdn.net/images/cover/${trackAPI.md5_image}/75x75-000000-80-0-0.jpg`
   }
-
-  let title = trackAPI_gw.SNG_TITLE.trim()
-  if (trackAPI_gw.VERSION && !title.includes(trackAPI_gw.VERSION.trim())){
-    title += ` ${trackAPI_gw.VERSION.trim()}`
-  }
-  const explicit = Boolean(parseInt(trackAPI_gw.EXPLICIT_LYRICS || "0"))
 
   return new Single({
     type: 'track',
     id: id,
     bitrate: bitrate,
-    title: title,
-    artist: trackAPI_gw.ART_NAME,
-    cover: `https://e-cdns-images.dzcdn.net/images/cover/${trackAPI_gw.ALB_PICTURE}/75x75-000000-80-0-0.jpg`,
-    explicit: explicit,
+    title: trackAPI.title,
+    artist: trackAPI.artist.name,
+    cover: cover,
+    explicit: trackAPI.explicit_lyrics,
     single: {
-      trackAPI_gw: trackAPI_gw,
       trackAPI: trackAPI,
       albumAPI: albumAPI
     }
@@ -80,8 +76,10 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     try{
       let albumAPI_gw_page = await dz.gw.get_album_page(id)
       if (albumAPI_gw_page.DATA){
+        albumAPI = map_album(albumAPI_gw_page.DATA)
         id = albumAPI_gw_page.DATA.ALB_ID
-        albumAPI = await dz.api.get_album(id)
+        let albumAPI_new = await dz.api.get_album(id)
+        albumAPI = {...albumAPI, ...albumAPI_new}
       } else {
         throw new GenerationError(`https://deezer.com/album/${id}`, "Can't find the album")
       }
@@ -95,9 +93,8 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   // Get extra info about album
   // This saves extra api calls when downloading
   let albumAPI_gw = await dz.gw.get_album(id)
-  albumAPI.nb_disk = albumAPI_gw.NUMBER_DISK
-  albumAPI.copyright = albumAPI_gw.COPYRIGHT
-  albumAPI.release_date = albumAPI_gw.PHYSICAL_RELEASE_DATE
+  albumAPI_gw = map_album(albumAPI_gw)
+  albumAPI = {...albumAPI_gw, ...albumAPI}
   albumAPI.root_artist = rootArtist
 
   // If the album is a single download as a track
@@ -113,18 +110,19 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
   if (albumAPI.cover_small){
     cover = albumAPI.cover_small.slice(0, -24) + '/75x75-000000-80-0-0.jpg'
   }else{
-    cover = `https://e-cdns-images.dzcdn.net/images/cover/${albumAPI_gw.ALB_PICTURE}/75x75-000000-80-0-0.jpg`
+    cover = `https://e-cdns-images.dzcdn.net/images/cover/${albumAPI.md5_image}/75x75-000000-80-0-0.jpg`
   }
 
   const totalSize = tracksArray.length
   albumAPI.nb_tracks = totalSize
   let collection = []
   tracksArray.forEach((trackAPI, pos) => {
-    trackAPI.POSITION = pos+1
+    trackAPI = map_track(trackAPI)
+    trackAPI.position = pos+1
     collection.push(trackAPI)
   })
 
-  let explicit = [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(albumAPI_gw.EXPLICIT_ALBUM_CONTENT.EXPLICIT_LYRICS_STATUS || LyricsStatus.UNKNOWN)
+  let explicit = albumAPI.explicit_lyrics
 
   return new Collection({
     type: 'album',
@@ -136,7 +134,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     explicit: explicit,
     size: totalSize,
     collection: {
-      tracks_gw: collection,
+      tracks: collection,
       albumAPI: albumAPI
     }
   })
@@ -177,9 +175,10 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
   playlistAPI.nb_tracks = totalSize
   let collection = []
   playlistTracksAPI.forEach((trackAPI, pos) => {
-    if (trackAPI.EXPLICIT_TRACK_CONTENT && [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT].includes(trackAPI.EXPLICIT_TRACK_CONTENT.EXPLICIT_LYRICS_STATUS))
+    trackAPI = map_track(trackAPI)
+    if (trackAPI.explicit_lyrics)
       playlistAPI.explicit = true
-    trackAPI.POSITION = pos+1
+    trackAPI.position = pos+1
     collection.push(trackAPI)
   });
 
@@ -195,7 +194,7 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
     explicit: playlistAPI.explicit,
     size: totalSize,
     collection: {
-      tracks_gw: collection,
+      tracks: collection,
       playlistAPI: playlistAPI
     }
   })
