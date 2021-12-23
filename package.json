@@ -1,6 +1,6 @@
 {
   "name": "deemix",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "description": "a barebones deezer downloader library",
   "main": "deemix/index.js",
   "scripts": {
