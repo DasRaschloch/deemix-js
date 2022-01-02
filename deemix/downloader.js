@@ -132,7 +132,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     return url
   }
 
-  if (track.localTrack) {
+  if (track.local) {
     let url = await getCorrectURL(track, "MP3_MISC", TrackFormats.LOCAL, feelingLucky)
     track.urls["MP3_MISC"] = url
     return TrackFormats.LOCAL

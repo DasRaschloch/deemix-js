@@ -29,7 +29,7 @@ class Track {
     this.fallbackID = "0"
     this.albumsFallback = []
     this.filesizes = {}
-    this.localTrack = false
+    this.local = false
     this.mainArtist = null
     this.artist = {"Main": []}
     this.artists = []
@@ -65,7 +65,7 @@ class Track {
     this.filesizes = trackAPI.filesizes
     this.fallbackID = "0"
     if (trackAPI.fallback_id) this.fallbackID = trackAPI.fallback_id
-    this.localTrack = parseInt(this.id) < 0
+    this.local = parseInt(this.id) < 0
     this.urls = {}
   }
 
@@ -80,7 +80,7 @@ class Track {
     this.parseEssentialData(trackAPI)
 
     // only public api has bpm
-    if (!trackAPI.bpm && !this.localTrack){
+    if (!trackAPI.bpm && !this.local){
       try {
         let trackAPI_new = await dz.api.get_track(trackAPI.id)
         trackAPI_new.release_date = trackAPI.release_date
@@ -89,7 +89,7 @@ class Track {
       catch { /*empty*/ }
     }
 
-    if (this.localTrack){
+    if (this.local){
       this.parseLocalTrackData(trackAPI)
     }else{
       this.parseTrack(trackAPI)
