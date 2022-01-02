@@ -24,12 +24,14 @@ function changeCase(txt, type){
     case 'lower': return txt.toLowerCase()
     case 'upper': return txt.toUpperCase()
     case 'start':
-      txt = txt.split(" ")
+      txt = txt.trim().split(" ")
       for (let i = 0; i < txt.length; i++) {
-        if (['(', '{', '['].some(bracket => ( txt[i].length > 1 && txt[i].startsWith(bracket) ) )) {
+        if (['(', '{', '[', "'", '"'].some(bracket => ( txt[i].length > 1 && txt[i].startsWith(bracket) ) )) {
           txt[i] = txt[i][0] + txt[i][1].toUpperCase() + txt[i].substr(2).toLowerCase()
-        } else {
+        } else if (txt[i].length > 1) {
           txt[i] = txt[i][0].toUpperCase() + txt[i].substr(1).toLowerCase()
+        } else {
+          txt[i] = txt[i][0].toUpperCase()
         }
       }
       return txt.join(" ")
