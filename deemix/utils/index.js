@@ -42,19 +42,22 @@ function removeFeatures(title){
   let clean = title
   let found = false
   let pos
-  if (clean.search(/[\s(]?feat\.?\s/gi) != -1){
-    pos = clean.search(/[\s(]?feat\.?\s/gi)
+  if (clean.search(/[\s(]\(?\s?feat\.?\s/gi) != -1){
+    pos = clean.search(/[\s(]\(?\s?feat\.?\s/gi)
     found = true
   }
-  if (clean.search(/[\s(]?ft\.?\s/gi) != -1){
-    pos = clean.search(/[\s(]?ft\.?\s/gi)
+  if (clean.search(/[\s(]\(?\s?ft\.?\s/gi) != -1){
+    pos = clean.search(/[\s(]\(?\s?ft\.?\s/gi)
     found = true
   }
-  const openBracket = clean[pos] == '('
+  const openBracket = clean[pos] == '(' || clean[pos+1] == '('
+  const otherBracket = clean.indexOf('(', pos+2)
   if (found) {
     let tempTrack = clean.slice(0, pos)
     if (clean.includes(')') && openBracket)
-      tempTrack += clean.slice(clean.indexOf(')', pos+1)+1)
+      tempTrack += clean.slice(clean.indexOf(')', pos+2)+1)
+    if (!openBracket && otherBracket != -1)
+      tempTrack += ` ${clean.slice(otherBracket)}`
     clean = tempTrack.trim()
     clean = clean.replace(/\s\s+/g, ' ') // remove extra spaces
   }
