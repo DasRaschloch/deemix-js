@@ -85,7 +85,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   async function* depadder(source){
     let isStart = true
     for await (let chunk of source){
-      if (isStart && chunk[0] == 0){
+      if (isStart && chunk[0] == 0 && chunk.slice(4, 8).toString() !== "ftyp"){
         let i
         for (i = 0; i < chunk.length; i++){
           let byte = chunk[i]
