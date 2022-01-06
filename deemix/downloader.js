@@ -665,7 +665,10 @@ class Downloader {
     try {
       if (this.settings.logSearched && track.searched){
         let filename = `${track.data.artist} - ${track.data.title}`
-        let searchedFile = fs.readFileSync(`${this.downloadObject.extrasPath}/searched.txt`).toString()
+        let searchedFile
+        try {
+          searchedFile = fs.readFileSync(`${this.downloadObject.extrasPath}/searched.txt`).toString()
+        } catch { searchedFile = "" }
         if (searchedFile.indexOf(filename) == -1){
           if (searchedFile != "") searchedFile += "\r\n"
           searchedFile += filename + "\r\n"
