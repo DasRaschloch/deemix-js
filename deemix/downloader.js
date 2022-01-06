@@ -579,7 +579,8 @@ class Downloader {
         result = {error:{
           message: e.message,
           errid: e.errid,
-          data: itemData
+          data: itemData,
+          type: "track"
         }}
       } else if (e instanceof DownloadCanceled){
         return
@@ -588,7 +589,8 @@ class Downloader {
         result = {error:{
           message: e.message,
           data: itemData,
-          stack: String(e.stack)
+          stack: String(e.stack),
+          type: "track"
         }}
       }
     }
@@ -605,11 +607,32 @@ class Downloader {
           data: error.data,
           error: error.message,
           errid: error.errid || null,
-          stack: error.stack || null
+          stack: error.stack || null,
+          type: error.type
         })
       }
     }
     return result
+  }
+
+  afterDownloadErrorReport(position, error, itemData = {}){
+    console.trace(error)
+    this.downloadObject.errors.push({
+      message: error.message,
+      stack: String(error.stack),
+      data: { position, ...itemData },
+      type: "post"
+    })
+    if (this.listener){
+      this.listener.send("updateQueue", {
+        uuid: this.downloadObject.uuid,
+        postFailed: true,
+        error: error.message,
+        data: { position, ...itemData },
+        stack: error.stack,
+        type: "post"
+      })
+    }
   }
 
   async afterDownloadSingle(track){
@@ -619,31 +642,47 @@ class Downloader {
     }
 
     // Save local album artwork
-    if (this.settings.saveArtwork && track.albumPath)
-      await each(track.albumURLs, async (image) => {
-        await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
-      })
+    try {
+      if (this.settings.saveArtwork && track.albumPath)
+        await each(track.albumURLs, async (image) => {
+          await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
+        })
+    } catch (e){
+      this.afterDownloadErrorReport("SaveLocalAlbumArt", e)
+    }
 
     // Save local artist artwork
-    if (this.settings.saveArtworkArtist && track.artistPath)
-      await each(track.artistURLs, async (image) => {
-        await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
-      })
+    try {
+      if (this.settings.saveArtworkArtist && track.artistPath)
+        await each(track.artistURLs, async (image) => {
+          await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
+        })
+    } catch (e){
+      this.afterDownloadErrorReport("SaveLocalArtistArt", e)
+    }
 
     // Create searched logfile
-    if (this.settings.logSearched && track.searched){
-      let filename = `${track.data.artist} - ${track.data.title}`
-      let searchedFile = fs.readFileSync(`${this.downloadObject.extrasPath}/searched.txt`).toString()
-      if (searchedFile.indexOf(filename) == -1){
-        if (searchedFile != "") searchedFile += "\r\n"
-        searchedFile += filename + "\r\n"
-        fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searchedFile)
+    try {
+      if (this.settings.logSearched && track.searched){
+        let filename = `${track.data.artist} - ${track.data.title}`
+        let searchedFile = fs.readFileSync(`${this.downloadObject.extrasPath}/searched.txt`).toString()
+        if (searchedFile.indexOf(filename) == -1){
+          if (searchedFile != "") searchedFile += "\r\n"
+          searchedFile += filename + "\r\n"
+          fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searchedFile)
+        }
       }
+    } catch (e){
+      this.afterDownloadErrorReport("CreateSearchedLog", e)
     }
 
     // Execute command after download
-    if (this.settings.executeCommand !== "")
-      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
+    try {
+      if (this.settings.executeCommand !== "")
+        exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
+    } catch (e){
+      this.afterDownloadErrorReport("ExecuteCommand", e)
+    }
   }
 
   async afterDownloadCollection(tracks){
@@ -667,44 +706,72 @@ class Downloader {
       if (track.searched) searched += `${track.data.artist} - ${track.data.title}\r\n`
 
       // Save local album artwork
-      if (this.settings.saveArtwork && track.albumPath)
-        await each(track.albumURLs, async (image) => {
-          await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
-        })
+      try{
+        if (this.settings.saveArtwork && track.albumPath)
+          await each(track.albumURLs, async (image) => {
+            await downloadImage(image.url, `${track.albumPath}/${track.albumFilename}.${image.ext}`, this.settings.overwriteFile)
+          })
+      } catch (e){
+        this.afterDownloadErrorReport("SaveLocalAlbumArt", e, track.data)
+      }
 
       // Save local artist artwork
-      if (this.settings.saveArtworkArtist && track.artistPath)
-        await each(track.artistURLs, async (image) => {
-          await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
-        })
+      try{
+        if (this.settings.saveArtworkArtist && track.artistPath)
+          await each(track.artistURLs, async (image) => {
+            await downloadImage(image.url, `${track.artistPath}/${track.artistFilename}.${image.ext}`, this.settings.overwriteFile)
+          })
+      } catch (e){
+        this.afterDownloadErrorReport("SaveLocalArtistArt", e, track.data)
+      }
 
       // Save filename for playlist file
       playlist[i] = track.filename || ""
     }
 
     // Create errors logfile
-    if (this.settings.logErrors && errors != "")
-      fs.writeFileSync(`${this.downloadObject.extrasPath}/errors.txt`, errors)
+    try{
+      if (this.settings.logErrors && errors != "")
+        fs.writeFileSync(`${this.downloadObject.extrasPath}/errors.txt`, errors)
+    } catch (e){
+      this.afterDownloadErrorReport("CreateErrorLog", e)
+    }
 
     // Create searched logfile
-    if (this.settings.logSearched && searched != "")
-      fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searched)
+    try{
+      if (this.settings.logSearched && searched != "")
+        fs.writeFileSync(`${this.downloadObject.extrasPath}/searched.txt`, searched)
+    } catch (e){
+      this.afterDownloadErrorReport("CreateSearchedLog", e)
+    }
 
     // Save Playlist Artwork
-    if (this.settings.saveArtwork && this.playlistCovername && !this.settings.tags.savePlaylistAsCompilation)
-      await each(this.playlistURLs, async (image) => {
-        await downloadImage(image.url, `${this.downloadObject.extrasPath}/${this.playlistCovername}.${image.ext}`, this.settings.overwriteFile)
-      })
+    try{
+      if (this.settings.saveArtwork && this.playlistCovername && !this.settings.tags.savePlaylistAsCompilation)
+        await each(this.playlistURLs, async (image) => {
+          await downloadImage(image.url, `${this.downloadObject.extrasPath}/${this.playlistCovername}.${image.ext}`, this.settings.overwriteFile)
+        })
+    } catch (e){
+      this.afterDownloadErrorReport("SavePlaylistArt", e)
+    }
 
     // Create M3U8 File
-    if (this.settings.createM3U8File){
-      let filename = generateDownloadObjectName(this.settings.playlistFilenameTemplate, this.downloadObject, this.settings) || "playlist"
-      fs.writeFileSync(`${this.downloadObject.extrasPath}/${filename}.m3u8`, playlist.join('\n'))
+    try{
+      if (this.settings.createM3U8File){
+        let filename = generateDownloadObjectName(this.settings.playlistFilenameTemplate, this.downloadObject, this.settings) || "playlist"
+        fs.writeFileSync(`${this.downloadObject.extrasPath}/${filename}.m3u8`, playlist.join('\n'))
+      }
+    } catch (e){
+      this.afterDownloadErrorReport("CreatePlaylistFile", e)
     }
 
     // Execute command after download
-    if (this.settings.executeCommand !== "")
-      exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", ''))
+    try{
+      if (this.settings.executeCommand !== "")
+        exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", ''))
+    } catch (e){
+      this.afterDownloadErrorReport("ExecuteCommand", e)
+    }
   }
 }
 
