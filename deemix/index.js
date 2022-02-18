@@ -5,10 +5,12 @@ const {
   generatePlaylistItem,
   generateArtistItem,
   generateArtistDiscographyItem,
-  generateArtistTopItem,
+  generateArtistTopItem
+} = require('./itemgen.js')
+const {
   LinkNotSupported,
   LinkNotRecognized
-} = require('./itemgen.js')
+} = require('./errors.js')
 
 async function parseLink(link){
   if (link.includes('deezer.page.link')){
