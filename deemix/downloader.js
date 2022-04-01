@@ -698,8 +698,25 @@ class Downloader {
 
     // Execute command after download
     try {
-      if (this.settings.executeCommand !== "")
-        exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)))
+      if (this.settings.executeCommand !== "") {
+        const child = exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", shellEscape(track.filename)),
+                           (error, stdout, stderr) => {
+                             if (error) {
+                               this.afterDownloadErrorReport("ExecuteCommand", error)
+                             }
+                             const itemData = { stderr, stdout };
+                             if (stderr) { 
+                               this.log(itemData, "stderr")
+                             }
+                             if (stdout) { 
+                               this.log(itemData, "stdout")
+                             }
+                           })
+                          
+        await new Promise((resolve) => {
+          child.on('close', resolve)
+        })
+      }
     } catch (e){
       this.afterDownloadErrorReport("ExecuteCommand", e)
     }
@@ -787,8 +804,25 @@ class Downloader {
 
     // Execute command after download
     try{
-      if (this.settings.executeCommand !== "")
-        exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", ''))
+      if (this.settings.executeCommand !== "") {
+        const child = exec(this.settings.executeCommand.replaceAll("%folder%", shellEscape(this.downloadObject.extrasPath)).replaceAll("%filename%", ''),
+                           (error, stdout, stderr) => {
+                             if (error) {
+                               this.afterDownloadErrorReport("ExecuteCommand", error)
+                             }
+                             const itemData = { stderr, stdout };
+                             if (stderr) { 
+                               this.log(itemData, "stderr")
+                             }
+                             if (stdout) { 
+                               this.log(itemData, "stdout")
+                             }
+                           })
+                          
+        await new Promise((resolve) => {
+          child.on('close', resolve)
+        })
+      }
     } catch (e){
       this.afterDownloadErrorReport("ExecuteCommand", e)
     }
