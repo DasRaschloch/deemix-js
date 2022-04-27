@@ -47,7 +47,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
     fs.unlinkSync(path)
   }
 
-  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}, timeout: 30000, retry: 3})
+  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}, timeout: 7000})
   const fileWriterStream = fs.createWriteStream(path)
 
   try {
@@ -64,7 +64,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
       }
       return null
     }
-    if (e instanceof got.TimeoutError) {
+    if (e instanceof got.TimeoutError || ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code)) {
       return downloadImage(url, path, overwrite)
     }
     console.trace(e)
@@ -87,7 +87,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     try{
       request = got.get(
         url,
-        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 30000, https: {rejectUnauthorized: false} }
+        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 7000, https: {rejectUnauthorized: false} }
       ).on("response", (response)=>{
         track.filesizes[`${formatName.toLowerCase()}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
         request.cancel()
@@ -478,9 +478,8 @@ class Downloader {
     if (!trackAlreadyDownloaded || this.settings.overwriteFile == OverwriteOption.OVERWRITE){
       track.downloadURL = track.urls[formatsName[track.bitrate]]
       if (!track.downloadURL) throw new DownloadFailed('notAvailable', track)
-      let stream = fs.createWriteStream(writepath)
       try {
-        await streamTrack(stream, track, 0, this.downloadObject, this.listener)
+        await streamTrack(writepath, track, this.downloadObject, this.listener)
       } catch (e){
         fs.unlinkSync(writepath)
         if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)

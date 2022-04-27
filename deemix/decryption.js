@@ -1,4 +1,5 @@
 const got = require('got')
+const fs = require('fs')
 const {_md5, _ecbCrypt, _ecbDecrypt, generateBlowfishKey, decryptChunk} = require('./utils/crypto.js')
 const { DownloadCanceled, DownloadEmpty} = require('./errors.js')
 
@@ -34,13 +35,14 @@ function reverseStreamURL(url){
   return reverseStreamPath(urlPart)
 }
 
-async function streamTrack(outputStream, track, start=0, downloadObject, listener){
+async function streamTrack(writepath, track, downloadObject, listener){
   if (downloadObject && downloadObject.isCanceled) throw new DownloadCanceled
   let headers = {'User-Agent': USER_AGENT_HEADER}
-  let chunkLength = start
+  let chunkLength = 0
   let complete = 0
   let isCryptedStream = track.downloadURL.includes("/mobile/") || track.downloadURL.includes("/media/")
   let blowfishKey
+  let outputStream = fs.createWriteStream(writepath)
 
   let itemData = {
     id: track.id,
@@ -100,7 +102,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
 
   let request = got.stream(track.downloadURL, {
     headers: headers,
-    retry: 3,
+    timeout: 7000,
     https: {rejectUnauthorized: false}
   }).on('response', (response)=>{
     complete = parseInt(response.headers["content-length"])
@@ -108,24 +110,13 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
       error = "DownloadEmpty"
       request.destroy()
     }
-    if (start != 0){
-      let responseRange = response.headers["content-range"]
-      if (listener) listener.send('downloadInfo', {
-        uuid: downloadObject.uuid,
-        data: itemData,
-        state: "downloading",
-        alreadyStarted: true,
-        value: responseRange
-      })
-    }else {
-      if (listener) listener.send('downloadInfo', {
-        uuid: downloadObject.uuid,
-        data: itemData,
-        state: "downloading",
-        alreadyStarted: false,
-        value: complete
-      })
-    }
+    if (listener) listener.send('downloadInfo', {
+      uuid: downloadObject.uuid,
+      data: itemData,
+      state: "downloading",
+      alreadyStarted: false,
+      value: complete
+    })
   }).on('data', function(chunk){
     if (downloadObject.isCanceled) {
       error = "DownloadCanceled"
@@ -134,14 +125,7 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
     chunkLength += chunk.length
 
     if (downloadObject){
-      let chunkProgres
-      if (downloadObject.__type__ === "Single"){
-        chunkProgres = (chunkLength / (complete + start)) * 100
-        downloadObject.progressNext = chunkProgres
-      }else{
-        chunkProgres = (chunk.length / (complete + start)) / downloadObject.size * 100
-        downloadObject.progressNext += chunkProgres
-      }
+      downloadObject.progressNext += ((chunk.length / complete) / downloadObject.size) * 100
       downloadObject.updateProgress(listener)
     }
   })
@@ -149,16 +133,26 @@ async function streamTrack(outputStream, track, start=0, downloadObject, listene
   try {
     await pipeline(request, decrypter, depadder, outputStream)
   } catch (e){
-    if (e instanceof got.ReadError || e instanceof got.TimeoutError){
-      await streamTrack(outputStream, track, chunkLength, downloadObject, listener)
+    outputStream.close()
+    if (e instanceof got.ReadError || e instanceof got.TimeoutError || ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code)){
+
+      if (downloadObject && chunkLength != 0){
+        downloadObject.progressNext -= ((chunkLength / complete) / downloadObject.size) * 100
+        downloadObject.updateProgress(listener)
+      }
+      return await streamTrack(writepath, track, downloadObject, listener)
     } else if (request.destroyed) {
       switch (error) {
         case 'DownloadEmpty': throw new DownloadEmpty
         case 'DownloadCanceled': throw new DownloadCanceled
         default: throw e
       }
-    } else { throw e }
+    } else {
+      console.trace(e)
+      throw e
+    }
   }
+  outputStream.close()
 }
 
 module.exports = {
