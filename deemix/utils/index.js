@@ -135,6 +135,7 @@ function formatListener(key, data){
             if (data.alreadyStarted) message += ` Recovering download from ${data.value}.`
             else message += ` Downloading ${data.value} bytes.`
           break;
+        case "downloadTimeout": message = "Deezer timedout when downloading track, retrying..."; break;
         case "downloaded": message = "Track downloaded."; break;
         case "alreadyDownloaded": message = "Track already downloaded."; break;
         case "tagging": message = "Tagging track."; break;

@@ -1,7 +1,7 @@
 const got = require('got')
 const fs = require('fs')
 const {_md5, _ecbCrypt, _ecbDecrypt, generateBlowfishKey, decryptChunk} = require('./utils/crypto.js')
-const { DownloadCanceled, DownloadEmpty} = require('./errors.js')
+const { DownloadCanceled, DownloadEmpty } = require('./errors.js')
 
 const { USER_AGENT_HEADER, pipeline } = require('./utils/index.js')
 
@@ -43,6 +43,7 @@ async function streamTrack(writepath, track, downloadObject, listener){
   let isCryptedStream = track.downloadURL.includes("/mobile/") || track.downloadURL.includes("/media/")
   let blowfishKey
   let outputStream = fs.createWriteStream(writepath)
+  let timeout = null
 
   let itemData = {
     id: track.id,
@@ -102,9 +103,9 @@ async function streamTrack(writepath, track, downloadObject, listener){
 
   let request = got.stream(track.downloadURL, {
     headers: headers,
-    timeout: 7000,
     https: {rejectUnauthorized: false}
   }).on('response', (response)=>{
+    clearTimeout(timeout)
     complete = parseInt(response.headers["content-length"])
     if (complete == 0) {
       error = "DownloadEmpty"
@@ -128,18 +129,37 @@ async function streamTrack(writepath, track, downloadObject, listener){
       downloadObject.progressNext += ((chunk.length / complete) / downloadObject.size) * 100
       downloadObject.updateProgress(listener)
     }
+    clearTimeout(timeout)
+    timeout = setTimeout(()=>{
+      error = "DownloadTimeout"
+      request.destroy()
+    }, 5000)
   })
+
+  timeout = setTimeout(()=>{
+    error = "DownloadTimeout"
+    request.destroy()
+  }, 5000)
 
   try {
     await pipeline(request, decrypter, depadder, outputStream)
   } catch (e){
-    outputStream.close()
-    if (e instanceof got.ReadError || e instanceof got.TimeoutError || ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code)){
-
+    if (fs.existsSync(writepath)) fs.unlinkSync(writepath)
+    if (
+      e instanceof got.ReadError ||
+      e instanceof got.TimeoutError ||
+      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code) ||
+      request.destroyed && error == "DownloadTimeout"
+    ){
       if (downloadObject && chunkLength != 0){
         downloadObject.progressNext -= ((chunkLength / complete) / downloadObject.size) * 100
         downloadObject.updateProgress(listener)
       }
+      if (listener) listener.send('downloadInfo', {
+        uuid: downloadObject.uuid,
+        data: itemData,
+        state: "downloadTimeout"
+      })
       return await streamTrack(writepath, track, downloadObject, listener)
     } else if (request.destroyed) {
       switch (error) {
@@ -152,7 +172,6 @@ async function streamTrack(writepath, track, downloadObject, listener){
       throw e
     }
   }
-  outputStream.close()
 }
 
 module.exports = {

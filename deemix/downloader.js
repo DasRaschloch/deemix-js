@@ -46,9 +46,23 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
     if (file.length != 0) return path
     fs.unlinkSync(path)
   }
+  let timeout = null
+  let error = ""
 
-  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}, timeout: 7000})
+  const downloadStream = got.stream(url, { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}})
+    .on('data', function(){
+      clearTimeout(timeout)
+      timeout = setTimeout(()=>{
+        error = "DownloadTimeout"
+        downloadStream.destroy()
+      }, 5000)
+    })
   const fileWriterStream = fs.createWriteStream(path)
+
+  timeout = setTimeout(()=>{
+    error = "DownloadTimeout"
+    downloadStream.destroy()
+  }, 5000)
 
   try {
     await pipeline(downloadStream, fileWriterStream)
@@ -64,7 +78,12 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
       }
       return null
     }
-    if (e instanceof got.TimeoutError || ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code)) {
+    if (
+      e instanceof got.ReadError ||
+      e instanceof got.TimeoutError ||
+      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code) ||
+      downloadStream.destroyed && error == "DownloadTimeout"
+    ) {
       return downloadImage(url, path, overwrite)
     }
     console.trace(e)
@@ -87,7 +106,7 @@ async function getPreferredBitrate(dz, track, preferredBitrate, shouldFallback, 
     try{
       request = got.get(
         url,
-        { headers: {'User-Agent': USER_AGENT_HEADER}, timeout: 7000, https: {rejectUnauthorized: false} }
+        { headers: {'User-Agent': USER_AGENT_HEADER}, https: {rejectUnauthorized: false}, timeout: 7000 }
       ).on("response", (response)=>{
         track.filesizes[`${formatName.toLowerCase()}`] = response.statusCode == 403 ? 0 : response.headers["content-length"]
         request.cancel()
@@ -481,7 +500,6 @@ class Downloader {
       try {
         await streamTrack(writepath, track, this.downloadObject, this.listener)
       } catch (e){
-        fs.unlinkSync(writepath)
         if (e instanceof got.HTTPError) throw new DownloadFailed('notAvailable', track)
         throw e
       }
