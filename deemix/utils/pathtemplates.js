@@ -138,7 +138,7 @@ function generateTrackName(filename, track, settings){
   filename = filename.replaceAll("%allartists%", fixName(track.fullArtistsString, c))
   filename = filename.replaceAll("%mainartists%", fixName(track.mainArtistsString, c))
   if (track.featArtistsString) filename = filename.replaceAll("%featartists%", fixName('('+track.featArtistsString+')', c))
-  else filename = filename.replaceAll("%featartists%", '')
+  else filename = filename.replaceAll(" %featartists%", '').replaceAll("%featartists%", '')
   filename = filename.replaceAll("%album%", fixName(track.album.title, c))
   filename = filename.replaceAll("%albumartist%", fixName(track.album.mainArtist.name, c))
   filename = filename.replaceAll("%tracknumber%", pad(track.trackNumber, track.album.trackTotal, settings))
@@ -153,7 +153,8 @@ function generateTrackName(filename, track, settings){
   filename = filename.replaceAll("%label%", fixName(track.album.label, c))
   filename = filename.replaceAll("%isrc%", track.ISRC)
   filename = filename.replaceAll("%upc%", track.album.barcode)
-  filename = filename.replaceAll("%explicit%", track.explicit ? "(Explicit)" : "")
+  if (track.explicit) filename = filename.replaceAll("%explicit%", "(Explicit)")
+  else filename = filename.replaceAll(" %explicit%", "").replaceAll("%explicit%", "")
 
   filename = filename.replaceAll("%track_id%", track.id)
   filename = filename.replaceAll("%album_id%", track.album.id)
