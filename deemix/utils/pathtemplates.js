@@ -182,6 +182,7 @@ function generateAlbumName(foldername, album, settings, playlist){
   }
   foldername = foldername.replaceAll("%album%", fixName(album.title, c))
   foldername = foldername.replaceAll("%artist%", fixName(album.mainArtist.name, c))
+  foldername = foldername.replaceAll("%artists%", fixName(album.artists.join(", "), c))
   foldername = foldername.replaceAll("%artist_id%", album.mainArtist.id)
   if (album.rootArtist){
     foldername = foldername.replaceAll("%root_artist%", fixName(album.rootArtist.name, c))
