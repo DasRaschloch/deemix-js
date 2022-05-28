@@ -140,6 +140,8 @@ function formatListener(key, data){
         case "alreadyDownloaded": message = "Track already downloaded."; break;
         case "tagging": message = "Tagging track."; break;
         case "tagged": message = "Track tagged."; break;
+        case "stderr": return `[${data.uuid}] ExecuteCommand Error: ${data.data.stderr}`
+        case "stdout": return `[${data.uuid}] ExecuteCommand Output: ${data.data.stdout}`
       }
       return `[${data.uuid}] ${data.data.artist} - ${data.data.title} :: ${message}`
     case "downloadWarn":
