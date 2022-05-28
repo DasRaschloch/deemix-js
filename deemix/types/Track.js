@@ -52,6 +52,7 @@ class Track {
     this.artistsString = ""
     this.mainArtistsString = ""
     this.featArtistsString = ""
+    this.fullArtistsString = ""
     this.urls = {}
   }
 
@@ -248,9 +249,11 @@ class Track {
 
   generateMainFeatStrings(){
     this.mainArtistsString = andCommaConcat(this.artist.Main)
+    this.fullArtistsString = `${this.mainArtistsString}`
     this.featArtistsString = ""
     if (this.artist.Featured){
       this.featArtistsString = `feat. ${andCommaConcat(this.artist.Featured)}`
+      this.fullArtistsString += ` ${this.featArtistsString}`
     }
   }
 
