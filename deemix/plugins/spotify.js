@@ -426,6 +426,10 @@ class Spotify extends Plugin {
     this.sp.clientCredentialsGrant().then(
       (creds)=>{
         this.sp.setAccessToken(creds.body.access_token)
+        // Need to get a new access_token when it expires
+        setTimeout(()=>{
+          this.checkCredentials()
+        }, creds.body.expires_in*1000-10)
         this.enabled = true
       },
       ()=>{
