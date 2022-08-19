@@ -297,7 +297,10 @@ class Track {
     this.album.mainArtist.save = (!this.album.mainArtist.isVariousArtists() || settings.albumVariousArtists && this.album.mainArtist.isVariousArtists())
 
     // Check removeDuplicateArtists
-    if (settings.removeDuplicateArtists) this.removeDuplicateArtists()
+    if (settings.removeDuplicateArtists){
+      this.removeDuplicateArtists()
+      this.generateMainFeatStrings()
+    }
 
     // Check if user wants the feat in the title
     if (settings.featuredToTitle == FeaturesOption.REMOVE_TITLE){
