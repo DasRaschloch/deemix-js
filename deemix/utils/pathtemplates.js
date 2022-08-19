@@ -50,7 +50,7 @@ function pad(num, max_val, settings) {
   } else{
     paddingSize = ((10 ** (parseInt(settings.paddingSize) - 1))+"").length
   }
-  if (paddingSize == 1) paddingSize = 2
+  if (settings.padSingleDigit && paddingSize == 1) paddingSize = 2
 
   if (settings.padTracks) return (num+"").padStart(paddingSize, "0")
   return (num+"")

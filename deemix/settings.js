@@ -35,6 +35,7 @@ const DEFAULTS = {
   createStructurePlaylist: false,
   createSingleFolder: false,
   padTracks: true,
+  padSingleDigit: true,
   paddingSize: "0",
   illegalCharacterReplacer: "_",
   queueConcurrency: 3,
