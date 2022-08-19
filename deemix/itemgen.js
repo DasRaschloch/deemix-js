@@ -278,7 +278,7 @@ async function generateArtistTopItem(dz, id, bitrate){
   // Get essential artist info
   let artistAPI
   try{
-    artistAPI = dz.api.get_artist(id)
+    artistAPI = await dz.api.get_artist(id)
   }catch (e){
     console.trace(e)
     throw new GenerationError(`https://deezer.com/artist/${id}/top_track`, e.message)
@@ -314,7 +314,7 @@ async function generateArtistTopItem(dz, id, bitrate){
     type: "playlist"
   }
 
-  let artistTopTracksAPI_gw = await dz.gw.get_artist_toptracks(id)
+  let artistTopTracksAPI_gw = await dz.gw.get_artist_top_tracks(id)
   return generatePlaylistItem(dz, playlistAPI.id, bitrate, playlistAPI, artistTopTracksAPI_gw)
 }
 
