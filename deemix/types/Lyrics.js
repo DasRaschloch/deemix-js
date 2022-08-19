@@ -1,3 +1,5 @@
+const { decode } = require('html-entities')
+
 class Lyrics {
   constructor(lyr_id = "0") {
     this.id = lyr_id
@@ -13,16 +15,17 @@ class Lyrics {
       let timestamp = ""
       let milliseconds = 0
       for (let line = 0; line < syncLyricsJson.length; line++) {
-        if (syncLyricsJson[line].line != ""){
+        let currentLine = decode(syncLyricsJson[line].line)
+        if (currentLine != ""){
           timestamp = syncLyricsJson[line].lrc_timestamp
           milliseconds = parseInt(syncLyricsJson[line].milliseconds)
-          this.syncID3.push([syncLyricsJson[line].line, milliseconds])
+          this.syncID3.push([currentLine, milliseconds])
         }else{
           let notEmptyLine = line + 1
           while (syncLyricsJson[notEmptyLine].line == "") notEmptyLine += 1
           timestamp = syncLyricsJson[notEmptyLine].lrc_timestamp
         }
-        this.sync += timestamp + syncLyricsJson[line].line + "\r\n"
+        this.sync += timestamp + currentLine + "\r\n"
       }
     }
   }
