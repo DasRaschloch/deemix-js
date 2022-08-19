@@ -8,7 +8,8 @@ const OverwriteOption = {
   DONT_OVERWRITE: 'n', // No, don't overwrite the file
   DONT_CHECK_EXT: 'e', // No, and don't check for extensions
   KEEP_BOTH: 'b', // No, and keep both files
-  ONLY_TAGS: 't' // Overwrite only the tags
+  ONLY_TAGS: 't', // Overwrite only the tags
+  ONLY_LOWER_BITRATES: 'l' // Overwrite only lower bitrates
 }
 
 // What should I do with featured artists?

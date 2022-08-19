@@ -480,6 +480,15 @@ class Downloader {
       }
     }
 
+    // Overwrite only lower bitrates
+    if (trackAlreadyDownloaded && this.settings.overwriteFile == OverwriteOption.ONLY_LOWER_BITRATES && extension == '.mp3'){
+      let stats = fs.statSync(writepath)
+      let fileSizeKb = stats.size * 8 / 1024
+      let bitrateAprox = fileSizeKb / track.duration
+      if (selectedFormat != 0 && bitrateAprox < 310 && selectedFormat == 3)
+        trackAlreadyDownloaded = false
+    }
+
     // Don't overwrite and keep both files
     if (trackAlreadyDownloaded && this.settings.overwriteFile == OverwriteOption.KEEP_BOTH){
       let baseFilename = `${filepath}/${filename}`
