@@ -37,7 +37,7 @@ const DEFAULTS = {
   paddingSize: "0",
   illegalCharacterReplacer: "_",
   queueConcurrency: 3,
-  maxBitrate: String(TrackFormats.MP3_320),
+  maxBitrate: String(TrackFormats.MP3_128),
   feelingLucky: false,
   fallbackBitrate: false,
   fallbackSearch: false,
