@@ -1,4 +1,5 @@
 const { TrackFormats } = require('deezer-js')
+const { Date: dzDate } = require('../types/Date.js')
 
 const bitrateLabels = {
     [TrackFormats.MP4_RA3]: "360 HQ",
@@ -222,6 +223,8 @@ function generateArtistName(foldername, artist, settings, rootArtist){
 
 function generatePlaylistName(foldername, playlist, settings){
   let c = settings['illegalCharacterReplacer']
+  let today = new Date()
+  let today_dz = new dzDate(String(today.getDate()).padStart(2, '0'), String(today.getMonth()+1).padStart(2, '0'), String(today.getFullYear()))
   foldername = foldername.replaceAll("%playlist%", fixName(playlist.title, c))
   foldername = foldername.replaceAll("%playlist_id%", fixName(playlist.playlistID, c))
   foldername = foldername.replaceAll("%owner%", fixName(playlist.owner['name'], c))
@@ -229,6 +232,7 @@ function generatePlaylistName(foldername, playlist, settings){
   foldername = foldername.replaceAll("%year%", playlist.date.year)
   foldername = foldername.replaceAll("%date%", playlist.dateString)
   foldername = foldername.replaceAll("%explicit%", playlist.explicit ? "(Explicit)" : "")
+  foldername = foldername.replaceAll("%today%", today_dz.format(settings['dateFormat']))
   foldername = foldername.replaceAll('\\', '/')
   return antiDot(fixLongName(foldername))
 }
