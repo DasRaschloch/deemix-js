@@ -202,15 +202,18 @@ async function generatePlaylistItem(dz, id, bitrate, playlistAPI, playlistTracks
   })
 }
 
-async function generateArtistItem(dz, id, bitrate, listener){
-  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}`)
+async function generateArtistItem(dz, id, bitrate, listener, tab = "all"){
+  let path = ""
+  if (tab != "all") path = '/'+tab
+
+  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}${path}`)
   // Get essential artist info
   let artistAPI
   try{
     artistAPI = await dz.api.get_artist(id)
   }catch (e){
     console.trace(e)
-    throw new GenerationError(`https://deezer.com/artist/${id}`, e.message)
+    throw new GenerationError(`https://deezer.com/artist/${id}${path}`, e.message)
   }
 
   const rootArtist = {
@@ -219,57 +222,33 @@ async function generateArtistItem(dz, id, bitrate, listener){
       picture_small: artistAPI.picture_small
   }
   if (listener) { listener.send("startAddingArtist", rootArtist) }
-
-  const artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
-  const allReleases = artistDiscographyAPI.all || []
-  let albumList = []
-  await each(allReleases, async (album) =>{
-    try{
-      let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
-      albumList.push(albumData)
-    }catch (e){
-      console.warn(album.id, "No Data", e)
-    }
-  })
-
-  if (listener) { listener.send("finishAddingArtist", rootArtist) }
-  return albumList
-}
-
-async function generateArtistDiscographyItem(dz, id, bitrate, listener){
-  if (!(/^\d+$/.test(id))) throw new InvalidID(`https://deezer.com/artist/${id}/discography`)
-  // Get essential artist info
-  let artistAPI
-  try{
-    artistAPI = await dz.api.get_artist(id)
-  }catch (e){
-    console.trace(e)
-    throw new GenerationError(`https://deezer.com/artist/${id}/discography`, e.message)
-  }
-
-  const rootArtist = {
-      id: artistAPI.id,
-      name: artistAPI.name,
-      picture_small: artistAPI.picture_small
-  }
-  if (listener) { listener.send("startAddingArtist", rootArtist) }
-
   let artistDiscographyAPI = await dz.gw.get_artist_discography_tabs(id, 100)
-  delete artistDiscographyAPI.all
   let albumList = []
-  await each(artistDiscographyAPI, async(type) => {
-    await each(type, async (album) =>{
+  if (tab === "discography"){
+    delete artistDiscographyAPI.all
+    await each(artistDiscographyAPI, async(type) => {
+      await each(type, async (album) =>{
+        try{
+          let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
+          albumList.push(albumData)
+        }catch (e){
+          console.warn(album.id, "No Data", e)
+        }
+      });
+    });
+  } else {
+    const tabReleases = artistDiscographyAPI[tab] || []
+    await each(tabReleases, async (album) =>{
       try{
         let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
         albumList.push(albumData)
       }catch (e){
         console.warn(album.id, "No Data", e)
       }
-    });
-  });
+    })
+  }
 
   if (listener) { listener.send("finishAddingArtist", rootArtist) }
-
   return albumList
 }
 
@@ -323,6 +302,5 @@ module.exports = {
   generateAlbumItem,
   generatePlaylistItem,
   generateArtistItem,
-  generateArtistDiscographyItem,
   generateArtistTopItem
 }

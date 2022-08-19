@@ -23,6 +23,7 @@ async function parseLink(link){
   if (link.endsWith('/')) link = link.slice(0, -1) // Remove last slash if present
 
   let link_type, link_id
+  let link_data
 
   if (!link.includes('deezer')) return [link, link_type, link_id] // return if not a deezer link
 
@@ -38,9 +39,10 @@ async function parseLink(link){
   }else if (link.search(/\/artist\/(\d+)\/top_track/g) != -1){
     link_type = 'artist_top'
     link_id = /\/artist\/(\d+)\/top_track/g.exec(link)[1]
-  }else if (link.search(/\/artist\/(\d+)\/discography/g) != -1){
-    link_type = 'artist_discography'
-    link_id = /\/artist\/(\d+)\/discography/g.exec(link)[1]
+  }else if (link.search(/\/artist\/(\d+)\/(.+)/g) != -1){
+    link_data = /\/artist\/(\d+)\/(.+)/g.exec(link)
+    link_type = `artist_${link_data[2]}`
+    link_id = link_data[1]
   }else if (link.search(/\/artist\/(\d+)/g) != -1){
     link_type = 'artist'
     link_id = /\/artist\/(\d+)/g.exec(link)[1]
@@ -66,22 +68,16 @@ async function generateDownloadObject(dz, link, bitrate, plugins={}, listener){
     throw new LinkNotRecognized(link)
   }
 
-  switch (link_type) {
-    case 'track':
-      return generateTrackItem(dz, link_id, bitrate)
-    case 'album':
-      return generateAlbumItem(dz, link_id, bitrate)
-    case 'playlist':
-      return generatePlaylistItem(dz, link_id, bitrate)
-    case 'artist':
-      return generateArtistItem(dz, link_id, bitrate, listener)
-    case 'artist_discography':
-      return generateArtistDiscographyItem(dz, link_id, bitrate, listener)
-    case 'artist_top':
-      return generateArtistTopItem(dz, link_id, bitrate)
-    default:
-      throw new LinkNotSupported(link)
+  if (link_type == 'track') return generateTrackItem(dz, link_id, bitrate)
+  if (link_type == 'album') return generateAlbumItem(dz, link_id, bitrate)
+  if (link_type == 'playlist') return generatePlaylistItem(dz, link_id, bitrate)
+  if (link_type == 'artist') return generateArtistItem(dz, link_id, bitrate, listener, 'all')
+  if (link_type == 'artist_top') return generateArtistTopItem(dz, link_id, bitrate)
+  if (link_type.startsWith('artist_')){
+    let tab = link_type.slice(7)
+    return generateArtistItem(dz, link_id, bitrate, listener, tab)
   }
+  throw new LinkNotSupported(link)
 }
 
 module.exports = {
@@ -103,7 +99,6 @@ module.exports = {
     generateAlbumItem,
     generatePlaylistItem,
     generateArtistItem,
-    generateArtistDiscographyItem,
     generateArtistTopItem
   },
   settings: require('./settings.js'),
