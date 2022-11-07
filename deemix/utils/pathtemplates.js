@@ -165,7 +165,7 @@ function generateTrackName(filename, track, settings){
     filename = filename.replaceAll("%position%", pad(track.position, track.playlist.trackTotal, settings))
   } else {
     filename = filename.replaceAll("%playlist_id%", '')
-    filename = filename.replaceAll("%position%", pad(track.position, track.album.trackTotal, settings))
+    filename = filename.replaceAll("%position%", pad(track.trackNumber, track.album.trackTotal, settings))
   }
   filename = filename.replaceAll('\\', '/')
   return antiDot(fixLongName(filename))
