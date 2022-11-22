@@ -88,7 +88,7 @@ class Album {
     this.label = albumAPI.label || this.label
     this.explicit = Boolean(albumAPI.explicit_lyrics || false)
     let release_date = albumAPI.release_date
-    if (albumAPI.physical_release_date) release_date = albumAPI.physical_release_date
+    if (albumAPI.original_release_date) release_date = albumAPI.original_release_date
     if (release_date){
       this.date.year = release_date.slice(0,4)
       this.date.month = release_date.slice(5,7)
