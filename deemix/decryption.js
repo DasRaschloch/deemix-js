@@ -148,7 +148,7 @@ async function streamTrack(writepath, track, downloadObject, listener){
     if (
       e instanceof got.ReadError ||
       e instanceof got.TimeoutError ||
-      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code) ||
+      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT", "ECONNRESET"].includes(e.code) ||
       request.destroyed && error == "DownloadTimeout"
     ){
       if (downloadObject && chunkLength != 0){

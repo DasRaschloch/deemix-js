@@ -81,7 +81,7 @@ async function downloadImage(url, path, overwrite = OverwriteOption.DONT_OVERWRI
     if (
       e instanceof got.ReadError ||
       e instanceof got.TimeoutError ||
-      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT"].includes(e.code) ||
+      ["ESOCKETTIMEDOUT", "ERR_STREAM_PREMATURE_CLOSE", "ETIMEDOUT", "ECONNRESET"].includes(e.code) ||
       downloadStream.destroyed && error == "DownloadTimeout"
     ) {
       return downloadImage(url, path, overwrite)
