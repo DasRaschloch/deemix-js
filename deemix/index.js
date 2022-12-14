@@ -4,7 +4,6 @@ const {
   generateAlbumItem,
   generatePlaylistItem,
   generateArtistItem,
-  generateArtistDiscographyItem,
   generateArtistTopItem
 } = require('./itemgen.js')
 const {
