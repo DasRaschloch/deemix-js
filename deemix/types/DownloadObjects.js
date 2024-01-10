@@ -90,6 +90,7 @@ class Single extends IDownloadObject{
   constructor(obj){
     super(obj)
     this.size = 1
+    this.release_date = obj.release_date || null
     this.single = obj.single
     this.__type__ = "Single"
   }
@@ -97,6 +98,7 @@ class Single extends IDownloadObject{
   toDict(){
     let item = super.toDict()
     item.single = this.single
+    item.release_date = this.release_date
     return item
   }
 
@@ -115,12 +117,14 @@ class Collection extends IDownloadObject{
   constructor(obj){
     super(obj)
     this.collection = obj.collection
+    this.release_date = obj.release_date || null
     this.__type__ = "Collection"
   }
 
   toDict(){
     let item = super.toDict()
     item.collection = this.collection
+    item.release_date = this.release_date
     return item
   }
 

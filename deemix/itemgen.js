@@ -46,6 +46,7 @@ async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
     title: trackAPI.title,
     artist: trackAPI.artist.name,
     cover: cover,
+    release_date: trackAPI.release_date,
     explicit: trackAPI.explicit_lyrics,
     single: {
       trackAPI: trackAPI,
@@ -132,6 +133,7 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     title: albumAPI.title,
     artist: albumAPI.artist.name,
     cover: cover,
+    release_date: albumAPI.release_date,
     explicit: albumAPI.explicit_lyrics,
     size: totalSize,
     collection: {
