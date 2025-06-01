@@ -3,7 +3,7 @@ const {
   Collection
 } = require('./types/DownloadObjects.js')
 const { GenerationError, ISRCnotOnDeezer, InvalidID, NotYourPrivatePlaylist } = require('./errors.js');
-const { map_user_playlist, map_track, map_album } = require('deezer-js').utils
+const { map_user_playlist, map_track, map_album } = require('@vaultalexandria/deezer-js').utils
 const { each } = require('async')
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){

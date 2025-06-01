@@ -1,4 +1,4 @@
-const { TrackFormats } = require('deezer-js')
+const { TrackFormats } = require('@vaultalexandria/deezer-js')
 const { Date: dzDate } = require('../types/Date.js')
 
 const bitrateLabels = {

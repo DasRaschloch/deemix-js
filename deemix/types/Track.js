@@ -1,4 +1,4 @@
-const { map_track, map_album } = require('deezer-js').utils
+const { map_track, map_album } = require('@vaultalexandria/deezer-js').utils
 const { Artist } = require('./Artist.js')
 const { Album } = require('./Album.js')
 const { Playlist } = require('./Playlist.js')

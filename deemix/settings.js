@@ -1,4 +1,4 @@
-const { TrackFormats } = require('deezer-js')
+const { TrackFormats } = require('@vaultalexandria/deezer-js')
 const { getMusicFolder, getConfigFolder } = require('./utils/localpaths.js')
 const fs = require('fs')
 
