@@ -1,12 +1,12 @@
 {
   "name": "deemix",
-  "version": "3.6.14",
+  "version": "3.6.15",
   "description": "a barebones deezer downloader library",
   "main": "deemix/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "RemixDev",
+  "author": "DasRaschloch",
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "@vaultalexandria/deezer-js": "^1.3.10",
