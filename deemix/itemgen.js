@@ -4,7 +4,6 @@ const {
 } = require('./types/DownloadObjects.js')
 const { GenerationError, ISRCnotOnDeezer, InvalidID, NotYourPrivatePlaylist } = require('./errors.js');
 const { map_user_playlist, map_track, map_album } = require('@vaultalexandria/deezer-js').utils
-const { each } = require('async')
 
 async function generateTrackItem(dz, id, bitrate, trackAPI, albumAPI){
   // Get essential track info
@@ -62,14 +61,14 @@ async function generateAlbumItem(dz, id, bitrate, rootArtist){
     let upcs = [id.slice(4)]
     upcs.push(parseInt(upcs[0])) // Try UPC without leading zeros as well
     let lastError
-    await each(upcs, async (upc)=>{
+    for (const upc of upcs) {
       try {
         albumAPI = await dz.api.get_album(`upc:${upc}`)
       } catch (e) {
         lastError = e
         albumAPI = null
       }
-    })
+    }
     if (!albumAPI){
       console.trace(lastError)
       throw new GenerationError(`https://deezer.com/album/${id}`, lastError.message)
@@ -228,26 +227,27 @@ async function generateArtistItem(dz, id, bitrate, listener, tab = "all"){
   let albumList = []
   if (tab === "discography"){
     delete artistDiscographyAPI.all
-    await each(artistDiscographyAPI, async(type) => {
-      await each(type, async (album) =>{
-        try{
-          let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
+    for (const typeKey of Object.keys(artistDiscographyAPI)) {
+      const bucket = artistDiscographyAPI[typeKey]
+      for (const albumMeta of bucket) {
+        try {
+          const albumData = await generateAlbumItem(dz, albumMeta.id, bitrate, rootArtist)
           albumList.push(albumData)
-        }catch (e){
-          console.warn(album.id, "No Data", e)
+        } catch (e) {
+          console.warn(albumMeta.id, 'No Data', e)
         }
-      });
-    });
+      }
+    }
   } else {
     const tabReleases = artistDiscographyAPI[tab] || []
-    await each(tabReleases, async (album) =>{
-      try{
-        let albumData = await generateAlbumItem(dz, album.id, bitrate, rootArtist)
+    for (const albumMeta of tabReleases) {
+      try {
+        const albumData = await generateAlbumItem(dz, albumMeta.id, bitrate, rootArtist)
         albumList.push(albumData)
-      }catch (e){
-        console.warn(album.id, "No Data", e)
+      } catch (e) {
+        console.warn(albumMeta.id, 'No Data', e)
       }
-    })
+    }
   }
 
   if (listener) { listener.send("finishAddingArtist", rootArtist) }
